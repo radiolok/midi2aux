@@ -1,52 +1,6 @@
 #include "midi.h"
 #include <avr/pgmspace.h>
-#include <util/delay.h>
 #include "uart.h"
-
-#define DBG_PORT PORTB
-#define DBG_DDR  DDRB
-#define DBG_PIN  0
-
-static void dbg_putc(uint8_t c) {
-	DBG_PORT &= ~(1 << DBG_PIN);
-	_delay_us(26);
-	for (uint8_t i = 0; i < 8; i++) {
-		if (c & 1)
-			DBG_PORT |= (1 << DBG_PIN);
-		else
-			DBG_PORT &= ~(1 << DBG_PIN);
-		_delay_us(26);
-		c >>= 1;
-	}
-	DBG_PORT |= (1 << DBG_PIN);
-	_delay_us(26);
-}
-
-static void dbg_puts(const char *s) {
-	while (*s) dbg_putc(*s++);
-}
-
-static void dbg_puts_P(const char *s) {
-	char c;
-	while ((c = pgm_read_byte(s++))) dbg_putc(c);
-}
-
-static void dbg_puthex(uint8_t val) {
-	uint8_t hi = (val >> 4) & 0x0F;
-	uint8_t lo = val & 0x0F;
-	dbg_putc(hi < 10 ? '0' + hi : 'A' + hi - 10);
-	dbg_putc(lo < 10 ? '0' + lo : 'A' + lo - 10);
-}
-
-static void dbg_crlf(void) {
-	dbg_putc('\r');
-	dbg_putc('\n');
-}
-
-void dbg_init(void) {
-	DBG_DDR |= (1 << DBG_PIN);
-	DBG_PORT |= (1 << DBG_PIN);
-}
 
 static const uint32_t notes[12] = {
 	1956947, 1847042, 1743489, 1646090,
@@ -88,32 +42,44 @@ void noteOff(void) {
 	midiActive = 0;
 }
 
+static void puthex(uint8_t val) {
+	uint8_t hi = (val >> 4) & 0x0F;
+	uint8_t lo = val & 0x0F;
+	uart_putc(hi < 10 ? '0' + hi : 'A' + hi - 10);
+	uart_putc(lo < 10 ? '0' + lo : 'A' + lo - 10);
+}
+
+static void crlf(void) {
+	uart_putc('\r');
+	uart_putc('\n');
+}
+
 static void printNote(uint8_t note) {
 	uint8_t semi = note % 12;
 	uint8_t oct  = note / 12;
-	dbg_putc(pgm_read_byte(&notename_letter[semi]));
+	uart_putc(pgm_read_byte(&notename_letter[semi]));
 	char sign = pgm_read_byte(&notename_sign[semi]);
-	if (sign != ' ') dbg_putc(sign);
+	if (sign != ' ') uart_putc(sign);
 	if (oct < 10) {
-		dbg_putc('0' + oct);
+		uart_putc('0' + oct);
 	} else {
-		dbg_putc('0' + oct / 10);
-		dbg_putc('0' + oct % 10);
+		uart_putc('0' + oct / 10);
+		uart_putc('0' + oct % 10);
 	}
 }
 
 void midiParser(uint8_t byte) {
-	dbg_puthex(byte);
-	dbg_putc(' ');
+	puthex(byte);
+	uart_putc(' ');
 
 	if (byte & 0x80) {
 		if (byte == 0xFC) {
-			dbg_crlf();
+			crlf();
 			noteOff();
 			return;
 		}
 		if (byte >= 0xF8) {
-			dbg_crlf();
+			crlf();
 			return;
 		}
 
@@ -130,27 +96,27 @@ void midiParser(uint8_t byte) {
 			if ((midiStatus & 0xF0) == 0x90 && vel > 0) {
 				midiNote = midiData1;
 				noteOn(midiNote);
-				dbg_puts_P(PSTR("ON  ch="));
-				dbg_putc('0' + (midiStatus & 0x0F));
-				dbg_puts_P(PSTR(" note="));
+				uart_puts_P("ON  ch=");
+				uart_putc('0' + (midiStatus & 0x0F));
+				uart_puts_P(" note=");
 				printNote(midiNote);
-				dbg_puts_P(PSTR(" vel="));
-				dbg_puthex(vel);
+				uart_puts_P(" vel=");
+				puthex(vel);
 			} else if ((midiStatus & 0xF0) == 0x80
 			           || ((midiStatus & 0xF0) == 0x90 && vel == 0)) {
 				if (midiData1 == midiNote) {
 					noteOff();
-					dbg_puts_P(PSTR("OFF ch="));
-					dbg_putc('0' + (midiStatus & 0x0F));
-					dbg_puts_P(PSTR(" note="));
+					uart_puts_P("OFF ch=");
+					uart_putc('0' + (midiStatus & 0x0F));
+					uart_puts_P(" note=");
 					printNote(midiData1);
 				} else {
-					dbg_puts_P(PSTR("---"));
+					uart_puts_P("---");
 				}
 			} else {
-				dbg_puts_P(PSTR("???"));
+				uart_puts_P("???");
 			}
-			dbg_crlf();
+			crlf();
 			midiState = MIDI_WAIT_DATA1;
 			break;
 		}

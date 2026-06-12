@@ -37,7 +37,6 @@ static void updateLEDs(void) {
 int main(void) {
 	initTimer2();
 	initGPIO();
-	dbg_init();
 	initADC();
 	initWaveform();
 	uart_init(UART_BAUD_SELECT(MIDI_BAUD, F_CPU));
