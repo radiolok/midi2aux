@@ -26,8 +26,13 @@ void noteOn(uint8_t note) {
 	if (period < 500) period = 500;
 
 	TCNT0 = 0;
-	OCR0A = period;
-	TCCR0B = (1 << CS00);
+	if (period < 2040) {
+		OCR0A  = (uint8_t)(period / 8);
+		TCCR0B = (1 << CS01);
+	} else {
+		OCR0A  = (uint8_t)(period / 64);
+		TCCR0B = (1 << CS01) | (1 << CS00);
+	}
 	TIMSK0 |= (1 << OCIE0A);
 	midiActive = 1;
 }
