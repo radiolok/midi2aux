@@ -23,7 +23,7 @@ uint16_t getNotePeriod(uint8_t note) {
 
 void noteOn(uint8_t note) {
 	uint16_t period = getNotePeriod(note);
-	if (period < 500) period = 500;
+	if (period < 350) period = 350;
 
 	TCNT0 = 0;
 	if (period < 2040) {
