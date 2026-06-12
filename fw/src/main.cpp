@@ -35,17 +35,17 @@ ISR(ADC_vect) {
 	potValue = ADCH;
 }
 
-static void initTimer0(void) {
-	TCCR0A = (1 << WGM01);
-	TCCR0B = (1 << CS02) | (1 << CS00);
-	OCR0A  = 155;
-	TIMSK0 = (1 << OCIE0A);
+static void initTimer1Btn(void) {
+	TCCR1A = 0;
+	TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);
+	OCR1A  = 155;
+	TIMSK1 = (1 << OCIE1A);
 }
 
 static uint8_t btnState = 0;
 static uint8_t btnCounter = 0;
 
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER1_COMPA_vect) {
 	uint8_t btn = (PINC & (1 << 1)) ? 1 : 0;
 
 	switch (btnState) {
@@ -59,6 +59,7 @@ ISR(TIMER0_COMPA_vect) {
 		if (--btnCounter == 0) {
 			if (btn == 0) {
 				btnState = 2;
+				noteOff();
 				waveMode = (waveMode + 1) & 3;
 				PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
 				PORTD |= (1 << (4 + waveMode));
@@ -78,7 +79,7 @@ int main(void) {
 	initTimer2();
 	initGPIO();
 	initADC();
-	initTimer0();
+	initTimer1Btn();
 	initWaveform();
 	uart_init(UART_BAUD_SELECT(MIDI_BAUD, F_CPU));
 

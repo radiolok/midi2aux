@@ -24,16 +24,22 @@ uint16_t getNotePeriod(uint8_t note) {
 void noteOn(uint8_t note) {
 	uint16_t period = getNotePeriod(note);
 	if (period < 500) period = 500;
-	OCR1A  = period;
-	TCNT1  = 0;
-	TCCR1B |= (1 << CS10);
-	TIMSK1 |= (1 << OCIE1A);
+
+	TCNT0 = 0;
+	if (period < 2040) {
+		OCR0A  = (uint8_t)(period / 8);
+		TCCR0B = (1 << CS01);
+	} else {
+		OCR0A  = (uint8_t)(period / 64);
+		TCCR0B = (1 << CS01) | (1 << CS00);
+	}
+	TIMSK0 |= (1 << OCIE0A);
 	midiActive = 1;
 }
 
 void noteOff(void) {
-	TCCR1B &= ~((1 << CS12) | (1 << CS11) | (1 << CS10));
-	TIMSK1 &= ~(1 << OCIE1A);
+	TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00));
+	TIMSK0 &= ~(1 << OCIE0A);
 	OCR2B = 0;
 	midiActive = 0;
 }

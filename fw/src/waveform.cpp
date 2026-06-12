@@ -8,8 +8,8 @@ static volatile uint8_t phase = 0;
 static uint8_t sine[16];
 
 void initWaveform(void) {
-	TCCR1A = 0;
-	TCCR1B = (1 << WGM12);
+	TCCR0A = (1 << WGM01);
+	TCCR0B = 0;
 
 	for (uint8_t i = 0; i < 16; i++) {
 		sine[i] = (uint8_t)(sinf((float)i * (float)M_PI / 32.0f) * 49.0f + 0.5f);
@@ -18,7 +18,7 @@ void initWaveform(void) {
 	phase = 0;
 }
 
-ISR(TIMER1_COMPA_vect) {
+ISR(TIMER0_COMPA_vect) {
 	uint8_t pot = potValue;
 	uint8_t mode = waveMode;
 	uint8_t pwm = 0;
