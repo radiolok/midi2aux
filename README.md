@@ -1,3 +1,5 @@
+![](img/midi2aux.jpg)
+
 # MIDI→AUX Converter
 
 Firmware for Arduino Nano (ATmega328P) that converts MIDI Note-On/Off messages into analog audio waveforms. Part of the АВК-6 «Музыкальная пауза» project.
