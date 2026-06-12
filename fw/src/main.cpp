@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include <util/delay.h>
 #include "uart.h"
 #include "midi.h"
@@ -12,7 +13,6 @@ static void initTimer2(void) {
 	TCCR2B = (1 << WGM22) | (1 << CS20);
 	OCR2A = 99;
 	OCR2B = 0;
-
 	DDRD |= (1 << 3);
 }
 
@@ -26,56 +26,73 @@ static void initGPIO(void) {
 
 static void initADC(void) {
 	ADMUX  = (1 << REFS0) | (1 << ADLAR);
-	ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+	ADCSRA = (1 << ADEN) | (1 << ADATE) | (1 << ADIE)
+	       | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+	ADCSRA |= (1 << ADSC);
 }
 
-static void updateLEDs(void) {
-	PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
-	PORTD |= (1 << (4 + waveMode));
+ISR(ADC_vect) {
+	potValue = ADCH;
+}
+
+static void initTimer0(void) {
+	TCCR0A = (1 << WGM01);
+	TCCR0B = (1 << CS02) | (1 << CS00);
+	OCR0A  = 155;
+	TIMSK0 = (1 << OCIE0A);
+}
+
+static uint8_t btnState = 0;
+static uint8_t btnCounter = 0;
+
+ISR(TIMER0_COMPA_vect) {
+	uint8_t btn = (PINC & (1 << 1)) ? 1 : 0;
+
+	switch (btnState) {
+	case 0:
+		if (btn == 0) {
+			btnState = 1;
+			btnCounter = 3;
+		}
+		break;
+	case 1:
+		if (--btnCounter == 0) {
+			if (btn == 0) {
+				btnState = 2;
+				waveMode = (waveMode + 1) & 3;
+				PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+				PORTD |= (1 << (4 + waveMode));
+			} else {
+				btnState = 0;
+			}
+		}
+		break;
+	case 2:
+		if (btn == 1)
+			btnState = 0;
+		break;
+	}
 }
 
 int main(void) {
 	initTimer2();
 	initGPIO();
 	initADC();
+	initTimer0();
 	initWaveform();
 	uart_init(UART_BAUD_SELECT(MIDI_BAUD, F_CPU));
 
-	updateLEDs();
+	PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+	PORTD |= (1 << (4 + waveMode));
+
 	_delay_ms(1000);
 	PORTD |= (1 << 2);
+
 	sei();
+	set_sleep_mode(SLEEP_MODE_IDLE);
 
-	uint8_t btnPrev = 1;
-	uint8_t btnStable = 1;
-
-	for (;;) {
-		ADCSRA |= (1 << ADSC);
-		while (ADCSRA & (1 << ADSC));
-		potValue = ADCH;
-
-		uint8_t btnRaw = (PINC & (1 << 1)) ? 1 : 0;
-
-		if (btnRaw != btnPrev) {
-			_delay_ms(30);
-			btnRaw = (PINC & (1 << 1)) ? 1 : 0;
-			if (btnRaw == btnPrev) {
-				btnStable = btnRaw;
-			} else {
-				btnStable = btnRaw;
-				if (btnStable == 0) {
-					waveMode = (waveMode + 1) & 3;
-					updateLEDs();
-				}
-			}
-		}
-
-		btnPrev = btnRaw;
-
-		while (uart_available()) {
-			midiParser(uart_getc());
-		}
-	}
+	for (;;)
+		sleep_mode();
 
 	return 0;
 }
