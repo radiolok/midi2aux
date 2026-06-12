@@ -25,7 +25,7 @@ ISR(TIMER1_COMPA_vect) {
 
 	switch (mode) {
 	case 0: {
-		uint8_t threshold = ((uint16_t)pot * 64) / 255;
+		uint8_t threshold = ((uint16_t)pot + 2) >> 2;
 		if (phase < threshold)
 			pwm = 99;
 		else
@@ -33,7 +33,7 @@ ISR(TIMER1_COMPA_vect) {
 		break;
 	}
 	case 1: {
-		uint8_t split = ((uint16_t)pot * 63) / 255;
+		uint8_t split = pot >> 2;
 		if (phase <= split) {
 			if (split > 0)
 				pwm = (uint8_t)(((uint16_t)phase * 99) / split);
@@ -49,7 +49,7 @@ ISR(TIMER1_COMPA_vect) {
 		break;
 	}
 	case 2: {
-		uint8_t ramp = ((uint16_t)pot * 63) / 255;
+		uint8_t ramp = pot >> 2;
 		if (phase <= ramp) {
 			if (ramp > 0)
 				pwm = (uint8_t)(((uint16_t)phase * 99) / ramp);
