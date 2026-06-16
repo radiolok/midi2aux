@@ -34,11 +34,10 @@ ISR(TIMER0_COMPA_vect) {
 	}
 	case 1: {
 		uint8_t split = pot >> 2;
-		if (phase <= split) {
-			if (split > 0)
-				pwm = (uint8_t)(((uint16_t)phase * 99) / split);
-			else
-				pwm = 0;
+		if (split == 0) {
+			pwm = (uint8_t)(((uint16_t)(63 - phase) * 99) / 63);
+		} else if (phase <= split) {
+			pwm = (uint8_t)(((uint16_t)phase * 99) / split);
 		} else {
 			uint8_t d = 63 - split;
 			if (d > 0)

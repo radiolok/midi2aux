@@ -1,4 +1,5 @@
 #include "midi.h"
+#include "waveform.h"
 
 static const uint32_t notes[12] = {
 	1956947, 1847042, 1743489, 1646090,
@@ -23,7 +24,21 @@ uint16_t getNotePeriod(uint8_t note) {
 
 void noteOn(uint8_t note) {
 	uint16_t period = getNotePeriod(note);
-	if (period < 350) period = 350;
+	uint16_t minPeriod;
+	switch (waveMode) {
+	case 0:  // square
+	case 3:  // sine
+		minPeriod = 200;
+		break;
+	case 2:  // ramp
+		minPeriod = 240;
+		break;
+	case 1:  // triangle
+	default:
+		minPeriod = 350;
+		break;
+	}
+	if (period < minPeriod) period = minPeriod;
 
 	TCNT0 = 0;
 	if (period < 2040) {
