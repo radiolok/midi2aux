@@ -60,8 +60,9 @@ ISR(TIMER1_COMPA_vect) {
 			if (btn == 0) {
 				btnState = 2;
 				noteOff();
-				waveMode = (waveMode + 1) & 3;
-				PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+				waveMode++;
+				if (waveMode >= 3) waveMode = 0;
+				PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6));
 				PORTD |= (1 << (4 + waveMode));
 			} else {
 				btnState = 0;
@@ -83,7 +84,7 @@ int main(void) {
 	initWaveform();
 	uart_init(UART_BAUD_SELECT(MIDI_BAUD, F_CPU));
 
-	PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+	PORTD &= ~((1 << 4) | (1 << 5) | (1 << 6));
 	PORTD |= (1 << (4 + waveMode));
 
 	_delay_ms(1000);

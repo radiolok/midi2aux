@@ -48,18 +48,6 @@ ISR(TIMER0_COMPA_vect) {
 		break;
 	}
 	case 2: {
-		uint8_t ramp = pot >> 2;
-		if (phase <= ramp) {
-			if (ramp > 0)
-				pwm = (uint8_t)(((uint16_t)phase * 99) / ramp);
-			else
-				pwm = 0;
-		} else {
-			pwm = 0;
-		}
-		break;
-	}
-	case 3: {
 		if (phase < 16)
 			pwm = 50 + sine[phase];
 		else if (phase < 32)

@@ -27,11 +27,8 @@ void noteOn(uint8_t note) {
 	uint16_t minPeriod;
 	switch (waveMode) {
 	case 0:  // square
-	case 3:  // sine
+	case 2:  // sine
 		minPeriod = 200;
-		break;
-	case 2:  // ramp
-		minPeriod = 240;
 		break;
 	case 1:  // triangle
 	default:
@@ -49,6 +46,7 @@ void noteOn(uint8_t note) {
 		TCCR0B = (1 << CS01) | (1 << CS00);
 	}
 	TIMSK0 |= (1 << OCIE0A);
+	PORTD |= (1 << 7);
 	midiActive = 1;
 }
 
@@ -56,6 +54,7 @@ void noteOff(void) {
 	TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00));
 	TIMSK0 &= ~(1 << OCIE0A);
 	OCR2B = 0;
+	PORTD &= ~(1 << 7);
 	midiActive = 0;
 }
 
