@@ -15,9 +15,15 @@ fpga/
     stub_core.sv       ядро этапа 0
     audio/             audio_clkgen (BCK/LRCK/audio_tick), i2s_tx, nco_sine,
                        sine_quarter_rom.sv (генерируется: make luts)
-    midi/uart_rx.sv    UART 8N1, 31250 бод
+    midi/              uart_rx, uart_tx, midi_parser
+    common/            sync_fifo
+    soc/               шина PicoRV32: RAM, boot ROM (генерируется: make bootrom), периферия, SPI
+    third_party/       PicoRV32 (ISC), без изменений
+    mono_core.sv       ядро этапа 1 (один голос, без процессора)
+    synth_core.sv      ядро с этапа 2 (PicoRV32 + звуковой тракт)
+    lint.vlt           исключения линта (third_party, board-top)
   boards/
-    tang_nano_9k/      top.sv, pll_sys.v (rPLL), .cst, .sdc, build.tcl (gw_sh)
+    tang_nano_9k/      top_synth.sv / top_mono.sv, pll_sys.v (rPLL), .cst на каждое ядро, .sdc, build.tcl
     tang_nano_20k/     то же для 20K
   sim/
     tb/tb_audio.cpp    общий тестбенч Verilator для ядер: MIDI → ядро → декодер I2S → WAV + JSON
@@ -105,23 +111,29 @@ BCK = sys_clk / (2 · 16) = 3.094 МГц = 64 · fs, **fs = 48 339.84 Гц** (+0
 В CI Gowin EDA нет. Нужна Gowin EDA (Education достаточно) с `gw_sh` в `PATH`:
 
 ```bash
-make bitstream-9k     # → build/gowin/9k/impl/pnr/avk_synth_9k.fs
-make bitstream-20k    # → build/gowin/20k/impl/pnr/avk_synth_20k.fs
-openFPGALoader -b tangnano9k build/gowin/9k/impl/pnr/avk_synth_9k.fs      # в SRAM
-openFPGALoader -b tangnano20k -f build/gowin/20k/impl/pnr/avk_synth_20k.fs # во флеш
+make bitstream-9k             # synth_core → build/gowin/9k-synth/impl/pnr/avk_synth_9k.fs
+make bitstream-9k CORE=mono   # mono_core (этап 1, без процессора)
+make bitstream-20k            # → build/gowin/20k-synth/impl/pnr/avk_synth_20k.fs
+openFPGALoader -b tangnano9k build/gowin/9k-synth/impl/pnr/avk_synth_9k.fs       # в SRAM
+openFPGALoader -b tangnano20k -f build/gowin/20k-synth/impl/pnr/avk_synth_20k.fs # во флеш
 ```
 
+После прошивки битстрима `synth_core` загрузить прошивку: `python3 sw/tools/load.py <порт> build/sw/fw.bin`
+(см. [`sw/README.md`](../sw/README.md)).
+
 Или в GUI: новый проект под нужный кристалл (9K: `GW1NR-LV9QN88PC6/I5`, 20K: `GW2AR-LV18QN88C8/I7`),
-добавить файлы из `rtl/files.f` и из `boards/<плата>/`, top module — `top`,
+добавить файлы из `rtl/files.f`, `boards/<плата>/pll_sys.v`, `top_<ядро>.sv`, `<плата>_<ядро>.cst`, `.sdc`; top module — `top`,
 Verilog Language — SystemVerilog 2017.
 
 `build.tcl` проверен только «всухую» (на заглушках команд `gw_sh`): при первой сборке могут
 понадобиться правки опций под версию Gowin EDA. Для второго мнения RTL синтезируется и yosys:
 `yosys -p "read_verilog -sv <files>; synth_gowin -top top"` (≈ 240 LUT, таблица синуса → BSRAM).
 
-Светодиоды: 0 — мигание 1 Гц, 1 — переключается на каждый байт MIDI, 2 — PLL захвачен,
-3 — ЦАП включён (XSMT). Кнопка — сброс (9K: активный 0, 20K: S1, активная 1).
+Светодиоды `synth_core`: 0–3 — GPIO прошивки (0 мигает), 4 — активность MIDI, 5 — trap процессора.
+`mono_core`: 0 — мигание, 1 — событие MIDI, 2 — гейт, 3 — PLL, 4 — ЦАП включён.
+Кнопки: S1 — сброс (9K: активный 0, 20K: активная 1), S2 — вход GPIO.
 
-**Распиновка I2S и MIDI — предварительная (HO-01)**: взяты свободные выводы разъёмов
-(9K и 20K: BCK 25, LRCK 26, DIN 27, XSMT 28, MIDI 29). Перед подключением сверить со схемой
+**Распиновка — предварительная (HO-01)**: I2S и MIDI на свободных выводах разъёмов
+(9K и 20K: BCK 25, LRCK 26, DIN 27, XSMT 28, MIDI 29); UART BL702 — 9K: 17/18, 20K: 69/70;
+SPI-флеш — 9K: встроенная на плате (59–62), 20K: внешняя на разъёме (73, 74, 75, 85). Перед подключением сверить со схемой
 Sipeed; окончательная таблица пинов — после этапа 6.

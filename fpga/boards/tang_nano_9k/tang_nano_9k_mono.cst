@@ -1,4 +1,4 @@
-// Tang Nano 9K (GW1NR-LV9QN88PC6/I5), stage 0 pinout.
+// Tang Nano 9K (GW1NR-LV9QN88PC6/I5), pinout for top_mono.sv (mono_core).
 // PRELIMINARY (HO-01): I2S/MIDI pins are free header GPIOs chosen for the breadboard
 // mock-up; check against the Sipeed schematic before wiring. Final pinout -- after stage 6.
 

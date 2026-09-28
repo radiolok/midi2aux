@@ -1,4 +1,4 @@
-/* PicoRV32, code and data in BSRAM at 0 (trs.md 8.2). The image is loaded into
+/* Firmware in RAM (BSRAM) at 0 (trs.md 8.2). The image is loaded into
    BSRAM by the bitstream or the loader, so .data needs no copy. */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)

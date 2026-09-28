@@ -26,10 +26,10 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: fpga/requirements.txt
-      - name: Install Verilator and Python deps
+      - name: Install Verilator, RISC-V GCC and Python deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends verilator
+          sudo apt-get install -y --no-install-recommends verilator gcc-riscv64-unknown-elf
           verilator --version
           pip install -r fpga/requirements.txt
       - name: Lint (verilator -Wall)
@@ -82,6 +82,12 @@ jobs:
           riscv64-unknown-elf-gcc --version
       - name: Build
         run: make fw
+      - name: Host unit tests
+        run: make swtest
+      - name: Boot ROM in RTL matches sw/boot
+        run: |
+          make bootrom
+          git diff --exit-code fpga/rtl/soc/boot_rom.sv
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
@@ -91,3 +97,5 @@ jobs:
             build/sw/fw.bin
             build/sw/fw.hex
             build/sw/fw.map
+            build/sw/boot.elf
+            build/sw/boot.bin

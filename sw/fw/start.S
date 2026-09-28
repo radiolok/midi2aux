@@ -1,4 +1,4 @@
-/* Reset entry: gp, sp, clear .bss, main(). */
+/* Firmware entry at RAM 0: gp, sp, clear .bss, main(). */
     .section .text.start, "ax"
     .global _start
 _start:

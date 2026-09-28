@@ -1,4 +1,5 @@
-// Tang Nano 20K top, stage 1: mono_core (MIDI -> one square voice, gate CV on OUT2).
+// Tang Nano 20K top: mono_core (stage 1, no CPU). Select with CORE=mono.
+// Stage 1: mono_core (MIDI -> one square voice, gate CV on OUT2).
 // LEDs (active low): 0 blink 1 Hz, 1 toggles per MIDI event, 2 gate, 3 PLL locked, 4 DAC unmuted.
 `default_nettype none
 

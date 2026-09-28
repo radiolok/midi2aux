@@ -2,6 +2,9 @@
 // (clk, rst, midi_rx, i2s_bck, i2s_lrck, i2s_din). Build with
 //   -DTOP_CLASS=Vmono_core -DTOP_HEADER='"Vmono_core.h"' -DSYS_CLK_HZ=... -DDATA_W=...
 //   -DMIDI_ECHO   the core exports midi_data/midi_valid: received bytes are checked
+//   -DSOC         CPU core (synth_core): debug UART monitor + scripted host, SPI flash model,
+//                 trap check; options --uart-out --uart-script --stop-on --flash-image
+//                 --flash-dump; UART_BAUD must be defined
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
 // DAC would (sampling DIN on BCK rising edges) and checks the frame format:
@@ -30,6 +33,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#ifdef SOC
+#include "soc_models.h"
+#endif
 
 #ifndef TOP_CLASS
 #error "define TOP_CLASS / TOP_HEADER"
@@ -190,6 +197,8 @@ static void write_wav(const std::string& path, uint32_t fs, const std::vector<in
 int main(int argc, char** argv) {
     double duration = 0.3;
     std::string midi_path, wav_path = "stub.wav", json_path = "stub.json";
+    std::string uart_out, uart_script, stop_on, flash_image, flash_dump;
+    uint32_t flash_image_off = 0, flash_dump_off = 0, flash_dump_len = 0;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() -> std::string {
@@ -203,6 +212,21 @@ int main(int argc, char** argv) {
         else if (a == "--midi") midi_path = next();
         else if (a == "--wav") wav_path = next();
         else if (a == "--json") json_path = next();
+        else if (a == "--uart-out") uart_out = next();
+        else if (a == "--uart-script") uart_script = next();
+        else if (a == "--stop-on") stop_on = next();
+        else if (a == "--flash-image") {  // path@offset
+            std::string v = next();
+            size_t at = v.find('@');
+            flash_image = v.substr(0, at);
+            flash_image_off = at == std::string::npos ? 0 : (uint32_t)strtoul(v.c_str() + at + 1, nullptr, 0);
+        } else if (a == "--flash-dump") {  // path@offset+len
+            std::string v = next();
+            size_t at = v.find('@'), plus = v.find('+');
+            flash_dump = v.substr(0, at);
+            flash_dump_off = (uint32_t)strtoul(v.c_str() + at + 1, nullptr, 0);
+            flash_dump_len = (uint32_t)strtoul(v.c_str() + plus + 1, nullptr, 0);
+        }
         else if (a[0] != '+') {  // +verilator+... plusargs are passed through
             fprintf(stderr, "unknown argument %s\n", a.c_str());
             return 2;
@@ -226,13 +250,30 @@ int main(int argc, char** argv) {
     int prev_bck = 0, prev_lrck = 0, prev_din = 0;
     std::string first_timing_error;
 
+#ifdef SOC
+    const double uart_bit = (double)SYS_CLK_HZ / UART_BAUD;
+    UartMonitor mon(uart_bit);
+    UartHost host(uart_script, uart_bit);
+    SpiFlash flash;
+    if (!flash_image.empty()) flash.load(flash_image, flash_image_off);
+    bool trapped = false, stopped = false;
+    top->uart_rx = 1;
+    top->btn = 0;
+    top->flash_miso = 1;
+#endif
+
     top->rst = 1;
     top->midi_rx = 1;
     top->clk = 0;
     top->eval();
-    for (uint64_t cyc = 0; cyc < total; ++cyc) {
+    uint64_t cyc = 0;
+    for (; cyc < total; ++cyc) {
         top->rst = cyc < reset_cycles;
         top->midi_rx = cyc < reset_cycles ? 1 : drv.level(cyc - reset_cycles);
+#ifdef SOC
+        top->uart_rx = host.step(cyc, mon.text);
+        top->flash_miso = flash.step(top->flash_sck, top->flash_mosi, top->flash_cs_n);
+#endif
         top->clk = 1;
         top->eval();
         top->clk = 0;
@@ -257,6 +298,17 @@ int main(int argc, char** argv) {
 #ifdef MIDI_ECHO
         if (top->midi_valid) midi_rx_bytes.push_back(top->midi_data);
 #endif
+#ifdef SOC
+        mon.step(cyc, top->uart_tx);
+        if (top->trap) {
+            trapped = true;
+            break;
+        }
+        if (!stop_on.empty() && host.done() && (cyc & 1023) == 0 && mon.text.find(stop_on) != std::string::npos) {
+            stopped = true;
+            break;
+        }
+#endif
         prev_bck = bck;
         prev_lrck = lrck;
         prev_din = din;
@@ -266,7 +318,7 @@ int main(int argc, char** argv) {
     // Bytes whose stop bit ended before the end of the run must have been received.
     size_t expected = 0;
     for (const auto& b : midi)
-        if (b.start_cycle + (uint64_t)llround(10 * bit_cycles) + reset_cycles < total) ++expected;
+        if (b.start_cycle + (uint64_t)llround(10 * bit_cycles) + reset_cycles < cyc) ++expected;
 #ifdef MIDI_ECHO
     bool midi_ok = midi_rx_bytes.size() == expected;
     for (size_t i = 0; midi_ok && i < expected; ++i) midi_ok = midi_rx_bytes[i] == midi[i].value;
@@ -283,11 +335,25 @@ int main(int argc, char** argv) {
         if (first_timing_error.empty()) first_timing_error = "BCK half-period not constant";
     }
     if (nf < 2) dec.error("fewer than 2 frames decoded");
+#ifdef SOC
+    if (!uart_out.empty()) {
+        std::ofstream(uart_out, std::ios::binary) << mon.text;
+    }
+    if (!flash_dump.empty()) flash.dump(flash_dump, flash_dump_off, flash_dump_len);
+    std::string soc_error;
+    if (trapped) soc_error = "CPU trap at cycle " + std::to_string(cyc);
+    else if (!host.done()) soc_error = "UART script stuck at line " + std::to_string(host.line());
+    else if (!stop_on.empty() && !stopped) soc_error = "stop text not seen: " + stop_on;
+    else if (mon.framing_errors) soc_error = "UART framing errors";
+    if (!soc_error.empty()) dec.error(soc_error);
+#endif
 
     write_wav(wav_path, (uint32_t)llround(fs > 0 ? fs : 48000), dec.out_l, dec.out_r);
 
     const bool ok = !dec.errors && !dec.pad_errors && !timing_errors && midi_ok;
     std::string first = !dec.first_error.empty() ? dec.first_error : first_timing_error;
+    for (char& ch : first)
+        if (ch == '"' || ch == '\\') ch = '\'';
     FILE* j = fopen(json_path.c_str(), "w");
     if (!j) {
         fprintf(stderr, "cannot write %s\n", json_path.c_str());
@@ -299,10 +365,11 @@ int main(int argc, char** argv) {
             "  \"i2s_errors\": %" PRIu64 ",\n  \"pad_errors\": %" PRIu64 ",\n  \"timing_errors\": %" PRIu64 ",\n"
             "  \"midi_sent\": %zu,\n  \"midi_received\": %zu,\n  \"midi_ok\": %s,\n"
             "  \"first_frame_cycle\": %" PRIu64 ",\n  \"reset_cycles\": %" PRIu64 ",\n"
+            "  \"cycles\": %" PRIu64 ",\n"
             "  \"first_error\": \"%s\",\n  \"ok\": %s\n}\n",
             (int)SYS_CLK_HZ, DATA_W, duration, fs, nf, half_min, half_max, dec.errors, dec.pad_errors,
             timing_errors, expected, midi_rx_bytes.size(), midi_ok ? "true" : "false",
-            nf ? dec.frame_cycles[0] : (uint64_t)0, reset_cycles, first.c_str(),
+            nf ? dec.frame_cycles[0] : (uint64_t)0, reset_cycles, cyc, first.c_str(),
             ok ? "true" : "false");
     fclose(j);
 

@@ -9,6 +9,16 @@ audio/nco_sine.sv
 audio/pitch2inc.sv
 audio/dac_scale.sv
 midi/uart_rx.sv
+midi/uart_tx.sv
 midi/midi_parser.sv
+third_party/picorv32/picorv32.v
+soc/boot_rom.sv
+soc/soc_ram.sv
+soc/spi_master.sv
+soc/periph_uart.sv
+soc/periph_timer.sv
+soc/periph_gpio.sv
+soc/periph_midi.sv
 stub_core.sv
 mono_core.sv
+synth_core.sv

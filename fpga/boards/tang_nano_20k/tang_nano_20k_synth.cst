@@ -1,0 +1,57 @@
+// Tang Nano 20K (GW2AR-LV18QN88C8/I7), pinout for top_synth.sv (synth_core).
+// PRELIMINARY (HO-01): I2S/MIDI pins are free header GPIOs chosen for the breadboard
+// mock-up; check against the Sipeed schematic before wiring. Final pinout -- after stage 6.
+
+// 27 MHz crystal oscillator
+IO_LOC  "clk_27m" 4;
+IO_PORT "clk_27m" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// on-board button S1, active high
+IO_LOC  "btn_rst" 88;
+IO_PORT "btn_rst" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+IO_LOC  "btn_user" 87;
+IO_PORT "btn_user" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+
+// on-board LEDs, active low
+IO_LOC  "led_n[0]" 15;
+IO_LOC  "led_n[1]" 16;
+IO_LOC  "led_n[2]" 17;
+IO_LOC  "led_n[3]" 18;
+IO_LOC  "led_n[4]" 19;
+IO_LOC  "led_n[5]" 20;
+IO_PORT "led_n[0]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "led_n[1]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "led_n[2]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "led_n[3]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "led_n[4]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "led_n[5]" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+
+// PCM5102A (PRELIMINARY, HO-01)
+IO_LOC  "i2s_bck"  25;
+IO_LOC  "i2s_lrck" 26;
+IO_LOC  "i2s_din"  27;
+IO_LOC  "dac_xsmt" 28;
+IO_PORT "i2s_bck"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "i2s_lrck" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "i2s_din"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "dac_xsmt" IO_TYPE=LVCMOS33 DRIVE=8;
+
+// MIDI after the optocoupler (PRELIMINARY, HO-01)
+IO_LOC  "midi_rx" 29;
+IO_PORT "midi_rx" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// BL702 USB-UART (debug console, firmware loader)
+IO_LOC  "uart_tx" 69;
+IO_LOC  "uart_rx" 70;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "uart_rx" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// firmware image: external SPI flash on the header (PRELIMINARY: or MSPI, HO-01)
+IO_LOC  "flash_sck"  73;
+IO_LOC  "flash_mosi" 74;
+IO_LOC  "flash_miso" 75;
+IO_LOC  "flash_cs_n" 85;
+IO_PORT "flash_sck"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "flash_mosi" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "flash_miso" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "flash_cs_n" IO_TYPE=LVCMOS33 DRIVE=8;
