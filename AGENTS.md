@@ -30,9 +30,11 @@ platformio.ini     # сборка MIDI2AUX
 .plans/            # планы и ТЗ (markdown, на русском)
   midi2aux-firmware.md
   fpga-synth/
-fpga/              # (план) RTL: rtl/, boards/ (9K, 20K), sim/ (Verilator), model/ (Python)
-sw/                # (план) прошивка софт-процессора RISC-V на C
+fpga/              # RTL: rtl/, boards/ (9K, 20K), sim/ (Verilator), model/ (Python); см. fpga/README.md
+sw/                # прошивка софт-процессора RISC-V на C (пока заглушка)
 hw/                # (план) KiCad: схема, плата, панель
+Makefile           # lint, sim, model, fw, test для FPGA-синтезатора
+.github/workflows/ # CI: fpga-synth.yml
 .kilo/skills/      # скиллы для агента Kilo (PlatformIO, GitHub)
 ```
 
@@ -40,10 +42,15 @@ hw/                # (план) KiCad: схема, плата, панель
 
 MIDI2AUX собирается PlatformIO (см. `README.md`); для работы над FPGA-синтезатором PlatformIO не нужен и в CI не входит.
 
-**FPGA-синтезатор** (появится на этапе 0 плана; до этого — не выдумывай команды):
-- линт и симуляция RTL — **Verilator**; стимулы — поток MIDI-байтов и сигналы входов из файлов; выход — WAV;
-- проверка — Python-скрипты анализа (спектр, осциллограммы, огибающие) с допусками → pass/fail;
-- битстримы собирает **Gowin EDA** локально у автора; в CI Gowin EDA нет.
+**FPGA-синтезатор** (подробно — `fpga/README.md`), из корня:
+- `make lint` — `verilator --lint-only -Wall` (ядро и board-top с заглушками примитивов Gowin);
+- `make sim` — тестбенч Verilator: поток MIDI-байтов из файла (31250 бод) → ядро → декодер I2S → WAV,
+  затем `fpga/sim/check_*.py`: спектр, частота, THD, сравнение с Python-моделью → pass/fail;
+- `make model` — pytest Python-моделей (`fpga/model/synthmodel`) и эталонные WAV;
+- `make fw` — прошивка RISC-V (`riscv64-unknown-elf-gcc` или `riscv-none-elf-gcc`);
+- `make test` — `lint` + `model` + `sim`; прогоняй перед каждым пушем;
+- `make luts` — перегенерировать таблицы RTL из модели (сгенерированные файлы не правь руками);
+- битстримы собирает **Gowin EDA** локально у автора (`make bitstream-9k|20k`, `gw_sh`); в CI Gowin EDA нет.
 
 CI (GitHub Actions) — обязателен и должен оставаться зелёным: линт, симуляция, сборка прошивки RISC-V.
 

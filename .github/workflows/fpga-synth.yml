@@ -1,0 +1,91 @@
+# FPGA synth for AVK-6: RTL lint, Verilator simulation with Python checks,
+# Python models, RISC-V firmware. Bitstreams (Gowin EDA) are built locally.
+# MIDI2AUX (fw/, PlatformIO) is not built here.
+name: fpga-synth
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rtl:
+    name: RTL lint + simulation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: fpga/requirements.txt
+      - name: Install Verilator and Python deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends verilator
+          verilator --version
+          pip install -r fpga/requirements.txt
+      - name: Lint (verilator -Wall)
+        run: make lint
+      - name: Simulate stub_core and check audio
+        run: make sim
+      - name: Upload simulation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-stub-core
+          path: |
+            build/sim/*.wav
+            build/sim/*.png
+            build/sim/*.json
+          if-no-files-found: warn
+
+  model:
+    name: Python models
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: fpga/requirements.txt
+      - run: pip install -r fpga/requirements.txt
+      - name: pytest + reference WAVs
+        run: make model
+      - name: Upload reference WAVs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-refs
+          path: build/model/
+          if-no-files-found: warn
+
+  firmware:
+    name: RISC-V firmware
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RISC-V toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf
+          riscv64-unknown-elf-gcc --version
+      - name: Build
+        run: make fw
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/sw/fw.elf
+            build/sw/fw.bin
+            build/sw/fw.hex
+            build/sw/fw.map
