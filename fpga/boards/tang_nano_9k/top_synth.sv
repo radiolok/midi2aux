@@ -45,7 +45,8 @@ module top (
     synth_core #(
         .SYS_CLK_HZ     (SYS_CLK_HZ),
         .RAM_BYTES      (32768),
-        .FW_FLASH_OFFSET(32'h0010_0000)
+        .FW_FLASH_OFFSET(32'h0010_0000),
+        .NUM_VOICES     (16)
     ) u_core (
         .clk       (clk),
         .rst       (rst),

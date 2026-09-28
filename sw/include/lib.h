@@ -12,6 +12,12 @@ void uart_puts(const char *s);
 int  uart_getc_nb(void);                 /* -1 if nothing received */
 int  uart_getc_timeout(uint32_t cycles); /* -1 on timeout */
 void uart_flush(void);
+int  uart_try_putc(char c);              /* 0 if the TX FIFO is full */
+
+/* non-blocking log: formats into a ring buffer, log_poll() moves it to the UART */
+void log_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void log_poll(void);
+void log_flush(void);
 
 /* printf subset: %d %i %u %x %X %c %s %p %%, flags '0' '-', width, 'l' ignored */
 int  xvsnprintf(char *buf, size_t n, const char *fmt, va_list ap);

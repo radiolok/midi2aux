@@ -61,6 +61,38 @@
 #define SPI_DIV(n)         PERIPH(n, 0x0C)
 #define SPI_FLASH          5
 
+/* voice engine (fpga/rtl/voice/voice_engine.sv) */
+#define VOICE_REG(k, off)  (VOICE_BASE + (uint32_t)(k) * 0x40u + (off))
+#define V_PITCH1           0x00u
+#define V_PITCH2           0x04u
+#define V_GATE             0x08u /* bit0 gate, bit1 retrigger toggle */
+#define V_VEL_AMP          0x0Cu
+#define V_CUT_OFS          0x10u
+#define V_STATUS           0x14u /* {st2[23:22], st1[21:20], env1[17:0]} */
+#define SYNTH_REG(off)     (SYNTH_BASE + (off))
+#define S_WAVES            0x00u
+#define S_PW               0x04u
+#define S_G1               0x08u
+#define S_G2               0x0Cu
+#define S_GN               0x10u
+#define S_CUTOFF           0x14u
+#define S_ENV2_DEPTH       0x18u
+#define S_RES_Q            0x1Cu
+#define S_FMODE            0x20u
+#define S_MASTER           0x24u
+#define S_A1               0x28u
+#define S_D1               0x2Cu
+#define S_S1               0x30u
+#define S_R1               0x34u
+#define S_A2               0x38u
+#define S_D2               0x3Cu
+#define S_S2               0x40u
+#define S_R2               0x44u
+#define S_PM               0x48u
+#define S_CM               0x4Cu
+#define S_AM               0x50u
+#define S_INFO             0x54u
+
 /* audio output (Q2.16, 1.0 = machine unit = 65536) */
 #define AUDIO_OUT_L        REG32(AUDIO_BASE + 0x00)
 #define AUDIO_OUT_R        REG32(AUDIO_BASE + 0x04)

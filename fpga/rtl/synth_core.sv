@@ -5,7 +5,9 @@
 //   0x0010_0000  boot ROM (reset vector by default)
 //   0x1000_0000  peripherals, 0x100 per block:
 //                0 UART  1 TIMER  2 GPIO  3 MIDI  4 SYSINFO  5 SPI flash
-//   0x3000_0000  audio output: 0x00 OUT (L), 0x04 OUT2 (R), Q2.16 (1.0 = МЕ)
+//   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
+//   0x3000_0000  audio output: 0x00 OUT (L), 0x04 OUT2 (R) DC offsets, Q2.16 (1.0 = МЕ)
+// OUT = softclip(voices + DC_L), OUT2 = softclip(DC_R).
 // Unmapped accesses complete with zero data.
 `default_nettype none
 
@@ -19,7 +21,8 @@ module synth_core #(
     parameter int          UART_BAUD       = 115_200,
     parameter int          BOOT_WAIT_MS    = 500,
     parameter logic [31:0] FW_FLASH_OFFSET = 32'h0050_0000,
-    parameter int          MIDI_BAUD       = 31_250
+    parameter int          MIDI_BAUD       = 31_250,
+    parameter int          NUM_VOICES      = 16
 ) (
     input  wire        clk,
     input  wire        rst,
@@ -45,7 +48,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0002_0000;  // stage 2
+    localparam logic [31:0] VERSION = 32'h0003_0000;  // stage 3
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -80,7 +83,7 @@ module synth_core #(
     /* verilator lint_on PINCONNECTEMPTY */
 
     // ------------------------------------------------------------ bus decode
-    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_AUDIO} sel_t;
+    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_VOICE, SEL_AUDIO} sel_t;
 
     logic        req, we;
     sel_t        sel, sel_q;
@@ -97,6 +100,7 @@ module synth_core #(
         if (mem_addr < 32'(RAM_BYTES))                sel = SEL_RAM;
         else if (mem_addr[31:12] == 20'h00100)        sel = SEL_ROM;  // 4 KB window
         else if (mem_addr[31:12] == 20'h10000)        sel = SEL_PERIPH;
+        else if (mem_addr[31:17] == 15'h1000)         sel = SEL_VOICE;
         else if (mem_addr[31:12] == 20'h30000)        sel = SEL_AUDIO;
     end
 
@@ -107,7 +111,7 @@ module synth_core #(
         blk_q <= blk;
     end
 
-    logic [31:0] ram_q, rom_q, audio_q;
+    logic [31:0] ram_q, rom_q, audio_q, voice_q;
     logic [31:0] prd [16];
 
     always_comb begin
@@ -115,6 +119,7 @@ module synth_core #(
             SEL_RAM:    mem_rdata = ram_q;
             SEL_ROM:    mem_rdata = rom_q;
             SEL_PERIPH: mem_rdata = prd[blk_q];
+            SEL_VOICE:  mem_rdata = voice_q;
             SEL_AUDIO:  mem_rdata = audio_q;
             default:    mem_rdata = '0;
         endcase
@@ -167,7 +172,7 @@ module synth_core #(
                 6'd2:    prd[4] <= 32'(SYS_CLK_HZ);
                 6'd3:    prd[4] <= 32'(BCK_HALF);
                 6'd4:    prd[4] <= 32'(RAM_BYTES);
-                6'd5:    prd[4] <= 32'd0;          // NUM_VOICES (stage 3)
+                6'd5:    prd[4] <= 32'(NUM_VOICES);
                 6'd6:    prd[4] <= 32'(BOOT_WAIT_MS);
                 6'd7:    prd[4] <= FW_FLASH_OFFSET;
                 6'd8:    prd[4] <= 32'(UART_BAUD);
@@ -197,11 +202,20 @@ module synth_core #(
     // ----------------------------------------------------------------- audio
     logic                     bck_fall_stb;
     logic [5:0]               slot_next;
-    logic signed [DATA_W-1:0] out_l, out_r, dac_l, dac_r;
+    logic signed [DATA_W-1:0] out_l, out_r, clip_l, clip_r, dac_l, dac_r;
+    logic signed [19:0]       s0;
+    logic                     s0_valid, engine_busy;
 
     audio_clkgen #(.SYS_CLK_HZ(SYS_CLK_HZ), .FS_HZ(FS_HZ), .BCK_HALF(BCK_HALF)) u_clkgen (
         .clk(clk), .rst(rst), .bck(i2s_bck), .bck_fall_stb(bck_fall_stb),
         .slot_next(slot_next), .audio_tick(audio_tick)
+    );
+
+    voice_engine #(.NUM_VOICES(NUM_VOICES)) u_voices (
+        .clk(clk), .rst(rst), .tick(audio_tick),
+        .req(req && sel == SEL_VOICE), .we(we), .addr(mem_addr[16:0]), .wdata(mem_wdata), .rdata(voice_q),
+        .pm_ext('0), .cm_ext('0), .am_ext(18'sd65536),
+        .s0(s0), .s0_valid(s0_valid), .busy(engine_busy)
     );
 
     always_ff @(posedge clk) begin
@@ -216,8 +230,14 @@ module synth_core #(
             audio_q <= reg_addr == 6'd0 ? 32'(out_l) : reg_addr == 6'd1 ? 32'(out_r) : '0;
     end
 
-    dac_scale #(.DATA_W(DATA_W)) u_dac_l (.clk(clk), .x(out_l), .y(dac_l));
-    dac_scale #(.DATA_W(DATA_W)) u_dac_r (.clk(clk), .x(out_r), .y(dac_r));
+    logic signed [20:0] mix_l;
+    assign mix_l = 21'(s0) + 21'(out_l);
+
+    softclip #(.IN_W(21)) u_clip_l (.clk(clk), .x(mix_l), .y(clip_l));
+    softclip #(.IN_W(21)) u_clip_r (.clk(clk), .x(21'(out_r)), .y(clip_r));
+
+    dac_scale #(.DATA_W(DATA_W)) u_dac_l (.clk(clk), .x(clip_l), .y(dac_l));
+    dac_scale #(.DATA_W(DATA_W)) u_dac_r (.clk(clk), .x(clip_r), .y(dac_r));
 
     i2s_tx #(.DATA_W(DATA_W)) u_i2s (
         .clk(clk), .rst(rst), .bck_fall_stb(bck_fall_stb), .slot_next(slot_next),
@@ -229,7 +249,7 @@ module synth_core #(
         else     dac_xsmt <= 1'b1;
     end
 
-    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:6]};
+    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:6], s0_valid, engine_busy};
 
 endmodule
 

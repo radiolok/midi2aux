@@ -8,6 +8,9 @@ audio/i2s_tx.sv
 audio/nco_sine.sv
 audio/pitch2inc.sv
 audio/dac_scale.sv
+audio/tanh_rom.sv
+audio/softclip.sv
+voice/voice_engine.sv
 midi/uart_rx.sv
 midi/uart_tx.sv
 midi/midi_parser.sv

@@ -55,7 +55,8 @@ luts:
 	cd fpga/model && $(PYTHON) -m synthmodel.luts
 
 plots: sim refs
-	cp $(BUILD)/sim/stub_core/stub_core.png $(BUILD)/sim/mono_core/mono_core.png fpga/sim/img/
+	cp $(BUILD)/sim/stub_core/stub_core.png $(BUILD)/sim/mono_core/mono_core.png \
+		$(BUILD)/sim/synth_voices/synth_voices.png fpga/sim/img/
 	cp $(BUILD)/model/models.png fpga/model/img/
 
 # ------------------------------------------------------------ RISC-V firmware

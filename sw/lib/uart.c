@@ -39,3 +39,11 @@ void uart_flush(void)
     while (!(UART_STATUS & UART_ST_TX_IDLE))
         ;
 }
+
+int uart_try_putc(char c)
+{
+    if (UART_STATUS & UART_ST_TX_FULL)
+        return 0;
+    UART_DATA = (uint8_t)c;
+    return 1;
+}

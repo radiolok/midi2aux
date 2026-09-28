@@ -10,7 +10,7 @@ and yosys, and every synthesiser infers a ROM from it.
 import argparse
 from pathlib import Path
 
-from . import pitch
+from . import pitch, softclip
 from .nco import quarter_sine_table
 
 RTL_DIR = Path(__file__).resolve().parents[2] / "rtl"
@@ -66,9 +66,19 @@ def exp_rom_sv() -> str:
          "T[i] = round(2^17 * 2^(i/1024)), D[i] = T[i+1] - T[i]. Model: synthmodel/pitch.py."])
 
 
+def tanh_rom_sv() -> str:
+    t, d, _ = softclip.tanh_table()
+    assert max(d) < 1024 and max(t) < (1 << 17)
+    return case_rom_sv(
+        "tanh_rom", [(dd << 17) | tt for tt, dd in zip(t, d)], 9, 27,
+        ["tanh knee for softclip: data = {D[9:0], T[16:0]},",
+         "T[i] = round(tanh(i/128) * 2^16), D[i] = T[i+1] - T[i]. Model: synthmodel/softclip.py."])
+
+
 GENERATED = {
     "audio/sine_quarter_rom.sv": lambda: sine_rom_sv(18, 10),
     "audio/exp2_rom.sv": exp_rom_sv,
+    "audio/tanh_rom.sv": tanh_rom_sv,
 }
 
 
