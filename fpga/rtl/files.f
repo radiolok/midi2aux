@@ -23,6 +23,9 @@ soc/periph_uart.sv
 soc/periph_timer.sv
 soc/periph_gpio.sv
 soc/periph_midi.sv
+panel/periph_pots.sv
+panel/periph_enc.sv
+panel/lcd_ctrl.sv
 stub_core.sv
 mono_core.sv
 synth_core.sv

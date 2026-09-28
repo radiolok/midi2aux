@@ -62,6 +62,10 @@ static int vformat(struct out *o, const char *fmt, va_list ap)
             pad = '0';
             fmt++;
         }
+        if (*fmt == '*') {
+            width = va_arg(ap, int);
+            fmt++;
+        }
         while (*fmt >= '0' && *fmt <= '9')
             width = width * 10 + (*fmt++ - '0');
         while (*fmt == 'l')

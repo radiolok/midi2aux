@@ -12,7 +12,7 @@ NV = 2
 
 def core():
     sw = vsys.build_sw()
-    return vsys.build("synth_core", {"UART_BAUD": UART_BAUD, "RESET_ADDR": 0, "RAM_INIT": sw / "fw.hex",
+    return vsys.build("synth_core", {"UART_BAUD": UART_BAUD, "RESET_ADDR": 0, "RAM_INIT": sw / "fw.hex", "SIM_FAST": 1,
                                      "NUM_VOICES": NV}, defines=["SOC", f"UART_BAUD={UART_BAUD}"])
 
 
@@ -44,14 +44,14 @@ def centroid(x, fs):
 
 
 def test_vibrato_from_mod_wheel():
-    events = [(40, [0x90, 69, 100]), (300, [0xB0, 1, 127]), (900, [0x80, 69, 0])]
+    events = [(140, [0x90, 69, 100]), (400, [0xB0, 1, 127]), (1000, [0x80, 69, 0])]
     stim = vsys.write_midi(vsys.BUILD / "vibrato_midi.txt", events)
-    r = vsys.run(core(), "synth_vibrato", 0.9, midi=stim,
+    r = vsys.run(core(), "synth_vibrato", 1.0, midi=stim,
                  uart_script=console("set mix2 0", "set cutoff 16000"))
     x = r.left / (65536 * 1.6)
-    a = r.index(0.06)
-    f, dt = track(x[a:r.index(0.88)], r.fs, 440)
-    t = 0.06 + np.arange(len(f)) * dt
+    a = r.index(0.16)
+    f, dt = track(x[a:r.index(0.98)], r.fs, 440)
+    t = 0.06 + np.arange(len(f)) * dt  # relative to the old 40 ms note-on
     plots.timeline_plot(r.out_dir / "synth_vibrato.png", 1 / dt, [("f, Hz", f)],
                         "vibrato: mod wheel 0 -> 127 at 0.3 s (LFO1 5.5 Hz, 50 cents)")
     before = f[(t > 0.1) & (t < 0.28)]
@@ -65,14 +65,14 @@ def test_vibrato_from_mod_wheel():
 
 
 def test_filter_envelope_and_lfo_route():
-    events = [(40, [0x90, 45, 127]), (700, [0x80, 45, 0])]
+    events = [(140, [0x90, 45, 127]), (800, [0x80, 45, 0])]
     stim = vsys.write_midi(vsys.BUILD / "fenv_midi.txt", events)
-    r = vsys.run(core(), "synth_fenv", 0.75, midi=stim,
+    r = vsys.run(core(), "synth_fenv", 0.85, midi=stim,
                  uart_script=console("set cutoff 150", "set env2amt 4800", "set a2 1", "set d2 400",
                                      "set s2 0", "set res 300", "set velcut 0"))
     x = r.left / (65536 * 1.6)
-    early = centroid(x[r.index(0.045):r.index(0.075)], r.fs)
-    late = centroid(x[r.index(0.5):r.index(0.65)], r.fs)
+    early = centroid(x[r.index(0.145):r.index(0.175)], r.fs)
+    late = centroid(x[r.index(0.6):r.index(0.75)], r.fs)
     plots.timeline_plot(r.out_dir / "synth_fenv.png", r.fs, [("OUT, МЕ", x)],
                         "filter envelope: cutoff 150 Hz + 4 octaves, D2 400 ms")
     assert early > 3 * late, (early, late)

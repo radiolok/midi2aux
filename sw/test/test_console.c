@@ -9,11 +9,19 @@
 #include "../fw/voice_alloc.c"
 #include "../lib/xprintf.c"
 
-static uint32_t regs[3 * 16384];
-static uint32_t idx(uint32_t a) { return ((a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
+/* fake register space: 0x2000_0000 voices, +0x1_0000 globals, +0x2_0000 modulation;
+ * peripherals (0x1000_0xxx) land in the fourth window */
+static uint32_t regs[4 * 16384];
+static uint32_t idx(uint32_t a) { return (a >> 28 == 1 ? 3u : (a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
 void hw_write(uint32_t a, uint32_t v) { regs[idx(a)] = v; }
 uint32_t hw_read(uint32_t a) { return regs[idx(a)]; }
 void uart_putc(char c) { (void)c; }
+void ui_row_text(const struct ui *u, int r, char *b, int n) /* no UI in this test */
+{
+    (void)u, (void)r;
+    if (n)
+        b[0] = 0;
+}
 
 static char out[4096];
 void log_printf(const char *fmt, ...)
@@ -38,7 +46,7 @@ static void feed(const char *t)
 static void test_set_get(void)
 {
     synth_init(&s, 4, FS);
-    console_init(&s);
+    console_init(&s, 0);
     feed("set cutoff 1000\r\n");
     CHECK_STR(out, "ok cutoff = 1000 (1000 Hz)\n");
     CHECK_EQ(hw_read(SYNTH_REG(S_CUTOFF)), hz_pitch(&FS, 1000));
@@ -55,7 +63,7 @@ static void test_set_get(void)
 static void test_route_and_notes(void)
 {
     synth_init(&s, 4, FS);
-    console_init(&s);
+    console_init(&s, 0);
     feed("route 2 2 0 2 -65536\n");
     CHECK_STR(out, "ok route 2\n");
     CHECK_EQ(hw_read(MOD_REG(M_ROUTE(2))), DST_CM << 8 | SRC_LFO2);
@@ -67,13 +75,17 @@ static void test_route_and_notes(void)
     CHECK_EQ(hw_read(VOICE_REG(0, V_GATE)), 1);
     feed("off 69\n");
     CHECK_EQ(hw_read(VOICE_REG(0, V_GATE)), 0);
+    regs[idx(PERIPH_ADDR(7, 4))] = (uint32_t)-2;
+    regs[idx(PERIPH_ADDR(6, 0))] = 4095u << 4;
+    feed("panel\n");
+    CHECK_STR(out, "enc 0 -2 0 0 buttons 0 pots 4095 0 0 0 0 0 0 0\n");
     feed("list\n");
     CHECK(strstr(out, "master = 25 (25 %)") != 0);
 }
 
 static void test_long_line_truncated(void)
 {
-    console_init(&s);
+    console_init(&s, 0);
     feed("set cutoff 1000 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
     CHECK(strstr(out, "error") != 0);
     feed("help\n");

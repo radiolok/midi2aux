@@ -1,14 +1,17 @@
 #include "console.h"
 
+#include "hw.h"
 #include "lib.h"
 
 static struct synth *syn;
+static struct ui *ui;
 static char line[64];
 static int len;
 
-void console_init(struct synth *s)
+void console_init(struct synth *s, struct ui *u)
 {
     syn = s;
+    ui = u;
     len = 0;
 }
 
@@ -97,9 +100,24 @@ void console_exec(char *l)
     } else if (!strcmp(cmd, "off") && argc == 2 && parse_int(argv[1], &a[0])) {
         synth_midi(syn, 0x80, (uint8_t)(a[0] & 127), 64);
         log_printf("ok off %d\n", (int)a[0]);
+    } else if (!strcmp(cmd, "panel")) {
+        log_printf("enc");
+        for (int k = 0; k < 4; k++)
+            log_printf(" %d", (int)(int16_t)hw_read(PERIPH_ADDR(7, 4u * k)));
+        log_printf(" buttons %x pots", (unsigned)hw_read(PERIPH_ADDR(7, 0x10)));
+        for (int k = 0; k < 8; k++)
+            log_printf(" %u", (unsigned)(hw_read(PERIPH_ADDR(6, 4u * k)) >> 4));
+        log_printf("\n");
+    } else if (!strcmp(cmd, "screen") && ui) {
+        char row[UI_COLS * 3 + 1];
+        for (int r = 0; r < UI_ROWS; r++) {
+            ui_row_text(ui, r, row, sizeof row);
+            log_printf("screen %d |%s|\n", r, row);
+        }
+        log_printf("screen end\n");
     } else if (!strcmp(cmd, "help")) {
         log_printf("set <param> <v> | get <param> | list | route <k> <src> <via> <dst> <depth> | "
-                   "note <n> [vel] | off <n>\n");
+                   "note <n> [vel] | off <n> | screen\n");
     } else {
         log_printf("error: unknown command, try help\n");
     }

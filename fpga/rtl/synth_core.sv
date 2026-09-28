@@ -5,6 +5,7 @@
 //   0x0010_0000  boot ROM (reset vector by default)
 //   0x1000_0000  peripherals, 0x100 per block:
 //                0 UART  1 TIMER  2 GPIO  3 MIDI  4 SYSINFO  5 SPI flash
+//                6 POTS (MCP3208)  7 ENC (encoders)  8 LCD (ST7789)
 //   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
 //   0x2002_0000  modulation unit (voice/mod_unit.sv): LFOs, modulation matrix
 //   0x3000_0000  audio output: 0x00 OUT (L), 0x04 OUT2 (R) DC offsets, Q2.16 (1.0 = МЕ)
@@ -23,7 +24,8 @@ module synth_core #(
     parameter int          BOOT_WAIT_MS    = 500,
     parameter logic [31:0] FW_FLASH_OFFSET = 32'h0050_0000,
     parameter int          MIDI_BAUD       = 31_250,
-    parameter int          NUM_VOICES      = 16
+    parameter int          NUM_VOICES      = 16,
+    parameter int          SIM_FAST        = 0      // SYSINFO flag: firmware shortens delays
 ) (
     input  wire        clk,
     input  wire        rst,
@@ -36,6 +38,20 @@ module synth_core #(
     output logic       flash_mosi,
     input  wire        flash_miso,
     output logic       flash_cs_n,
+    // panel: MCP3208 (potentiometers), encoders, ST7789 display
+    output logic       pot_sck,
+    output logic       pot_mosi,
+    input  wire        pot_miso,
+    output logic       pot_cs_n,
+    input  wire  [3:0] enc_a,
+    input  wire  [3:0] enc_b,
+    input  wire  [3:0] enc_sw,
+    output logic       lcd_sck,
+    output logic       lcd_mosi,
+    output logic       lcd_cs_n,
+    output logic       lcd_dc,
+    output logic       lcd_rst_n,
+    output logic       lcd_bl,
     // DAC
     output logic       i2s_bck,
     output logic       i2s_lrck,
@@ -49,7 +65,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0004_0000;  // stage 4
+    localparam logic [31:0] VERSION = 32'h0005_0000;  // stage 5
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -179,6 +195,7 @@ module synth_core #(
                 6'd6:    prd[4] <= 32'(BOOT_WAIT_MS);
                 6'd7:    prd[4] <= FW_FLASH_OFFSET;
                 6'd8:    prd[4] <= 32'(UART_BAUD);
+                6'd9:    prd[4] <= {31'b0, SIM_FAST != 0};
                 default: prd[4] <= '0;
             endcase
         end
@@ -189,7 +206,22 @@ module synth_core #(
         .rdata(prd[5]), .sck(flash_sck), .mosi(flash_mosi), .miso(flash_miso), .cs_n(flash_cs_n)
     );
 
-    for (genvar i = 6; i < 16; i++) begin : g_no_periph
+    periph_pots #(.SYS_CLK_HZ(SYS_CLK_HZ)) u_pots (
+        .clk(clk), .rst(rst), .req(preq[6]), .we(we), .addr(reg_addr), .rdata(prd[6]),
+        .sck(pot_sck), .mosi(pot_mosi), .miso(pot_miso), .cs_n(pot_cs_n)
+    );
+
+    periph_enc #(.SYS_CLK_HZ(SYS_CLK_HZ), .N(4)) u_enc (
+        .clk(clk), .rst(rst), .req(preq[7]), .we(we), .addr(reg_addr), .wdata(mem_wdata), .rdata(prd[7]),
+        .enc_a(enc_a), .enc_b(enc_b), .enc_sw(enc_sw)
+    );
+
+    lcd_ctrl u_lcd (
+        .clk(clk), .rst(rst), .req(preq[8]), .we(we), .addr(reg_addr), .wdata(mem_wdata), .rdata(prd[8]),
+        .sck(lcd_sck), .mosi(lcd_mosi), .cs_n(lcd_cs_n), .dc(lcd_dc), .rst_n(lcd_rst_n), .bl(lcd_bl)
+    );
+
+    for (genvar i = 9; i < 16; i++) begin : g_no_periph
         assign prd[i] = '0;
     end
 
@@ -263,7 +295,7 @@ module synth_core #(
         else     dac_xsmt <= 1'b1;
     end
 
-    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:6], s0_valid, engine_busy, lfo1, lfo2};
+    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:9], s0_valid, engine_busy, lfo1, lfo2};
 
 endmodule
 

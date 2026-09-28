@@ -19,6 +19,8 @@ static void test_printf_basic(void)
     const char *volatile nul = 0; /* not constant-folded: gcc warns on a literal NULL for %s */
     xsnprintf(buf, sizeof buf, "%s %lu", nul, 7ul);
     CHECK_STR(buf, "(null) 7");
+    xsnprintf(buf, sizeof buf, "[%*s][%*d]", 3, "a", 4, 12);
+    CHECK_STR(buf, "[  a][  12]");
 }
 
 static void test_printf_truncation(void)

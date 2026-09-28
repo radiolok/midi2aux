@@ -66,7 +66,7 @@ class SimResult:
 
 
 def run(exe, name, duration, midi=None, args=(), expect_ok=True, uart_script=None, stop_on=None,
-        flash_image=None, flash_dump=None):
+        flash_image=None, flash_dump=None, lcd_dump=None):
     out = BUILD / name
     out.mkdir(parents=True, exist_ok=True)
     wav, js = out / f"{name}.wav", out / f"{name}_tb.json"
@@ -85,6 +85,8 @@ def run(exe, name, duration, midi=None, args=(), expect_ok=True, uart_script=Non
         cmd += ["--flash-image", f"{flash_image[0]}@{flash_image[1]:#x}"]
     if flash_dump:
         cmd += ["--flash-dump", f"{flash_dump[0]}@{flash_dump[1]:#x}+{flash_dump[2]:#x}"]
+    if lcd_dump:
+        cmd += ["--lcd-dump", str(lcd_dump)]
     cmd += list(args)
     p = subprocess.run(cmd, capture_output=True, text=True)
     print(p.stdout, p.stderr)

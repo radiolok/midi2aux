@@ -23,13 +23,13 @@ def payload(image: bytes, flags=0, crc=None):
 
 
 def boot_core(**extra):
-    params = {"UART_BAUD": UART_BAUD, "BOOT_WAIT_MS": 1, "FW_FLASH_OFFSET": FW_FLASH, **extra}
+    params = {"UART_BAUD": UART_BAUD, "BOOT_WAIT_MS": 1, "FW_FLASH_OFFSET": FW_FLASH, "SIM_FAST": 1, **extra}
     return vsys.build("synth_core", params, defines=SOC)
 
 
 def fw_core():
     sw = vsys.build_sw()
-    return vsys.build("synth_core", {"UART_BAUD": UART_BAUD, "RESET_ADDR": 0, "RAM_INIT": sw / "fw.hex"},
+    return vsys.build("synth_core", {"UART_BAUD": UART_BAUD, "RESET_ADDR": 0, "RAM_INIT": sw / "fw.hex", "SIM_FAST": 1},
                       defines=SOC)
 
 
@@ -42,10 +42,10 @@ def write_payload(name, data):
 
 def test_fw_prints_midi_events():
     exe = fw_core()
-    events = [(0.5, [0x90, 69, 100]), (1.5, [72, 0]), (2.5, [0xB3, 1, 64, 0xF8]), (3.5, [0xE0, 0, 0x40]),
-              (4.5, [0xF0, 1, 2, 3, 0xF7, 0xC1, 5]), (5.5, [0xFC])]
+    events = [(30.5, [0x90, 69, 100]), (31.5, [72, 0]), (32.5, [0xB3, 1, 64, 0xF8]), (33.5, [0xE0, 0, 0x40]),
+              (34.5, [0xF0, 1, 2, 3, 0xF7, 0xC1, 5]), (35.5, [0xFC])]
     stim = vsys.write_midi(vsys.BUILD / "soc_midi.txt", events)
-    r = vsys.run(exe, "soc_midi", 0.02, midi=stim, stop_on="fc 00 00 system", uart_script=[])
+    r = vsys.run(exe, "soc_midi", 0.1, midi=stim, stop_on="fc 00 00 system", uart_script=[])
     assert "READY" in r.uart and "sys_clk 99000000 Hz, fs 48339.843 Hz" in r.uart
     got = [tuple(int(x, 16) for x in m) for m in re.findall(r"midi: (\w\w) (\w\w) (\w\w)", r.uart)]
     stream = [b for _, bs in events for b in bs]

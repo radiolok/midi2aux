@@ -19,7 +19,7 @@ void log_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void log_poll(void);
 void log_flush(void);
 
-/* printf subset: %d %i %u %x %X %c %s %p %%, flags '0' '-', width, 'l' ignored */
+/* printf subset: %d %i %u %x %X %c %s %p %%, flags '0' '-', width (or *), 'l' ignored */
 int  xvsnprintf(char *buf, size_t n, const char *fmt, va_list ap);
 int  xsnprintf(char *buf, size_t n, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 int  xprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));

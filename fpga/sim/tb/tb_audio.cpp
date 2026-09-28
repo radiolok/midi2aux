@@ -4,7 +4,8 @@
 //   -DMIDI_ECHO   the core exports midi_data/midi_valid: received bytes are checked
 //   -DSOC         CPU core (synth_core): debug UART monitor + scripted host, SPI flash model,
 //                 trap check; options --uart-out --uart-script --stop-on --flash-image
-//                 --flash-dump; UART_BAUD must be defined
+//                 --flash-dump; panel models (MCP3208, encoders, ST7789 --lcd-dump);
+//                 UART_BAUD must be defined
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
 // DAC would (sampling DIN on BCK rising edges) and checks the frame format:
@@ -197,7 +198,7 @@ static void write_wav(const std::string& path, uint32_t fs, const std::vector<in
 int main(int argc, char** argv) {
     double duration = 0.3;
     std::string midi_path, wav_path = "stub.wav", json_path = "stub.json";
-    std::string uart_out, uart_script, stop_on, flash_image, flash_dump;
+    std::string uart_out, uart_script, stop_on, flash_image, flash_dump, lcd_dump;
     uint32_t flash_image_off = 0, flash_dump_off = 0, flash_dump_len = 0;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -215,6 +216,7 @@ int main(int argc, char** argv) {
         else if (a == "--uart-out") uart_out = next();
         else if (a == "--uart-script") uart_script = next();
         else if (a == "--stop-on") stop_on = next();
+        else if (a == "--lcd-dump") lcd_dump = next();
         else if (a == "--flash-image") {  // path@offset
             std::string v = next();
             size_t at = v.find('@');
@@ -256,10 +258,32 @@ int main(int argc, char** argv) {
     UartHost host(uart_script, uart_bit);
     SpiFlash flash;
     if (!flash_image.empty()) flash.load(flash_image, flash_image_off);
+    Mcp3208 pots;
+    Encoders enc;
+    St7789 lcd;
+    uint64_t now = 0;
+    host.ext = [&](const std::string& op, const std::string& arg, uint64_t) {
+        int k = 0, v = 0;
+        if (op == "pot" && sscanf(arg.c_str(), "%d %d", &k, &v) == 2 && k >= 0 && k < 8) {
+            pots.value[k] = (uint16_t)(v < 0 ? 0 : v > 4095 ? 4095 : v);
+            return true;
+        }
+        if (op == "enc" && sscanf(arg.c_str(), "%d %d", &k, &v) == 2 && k >= 0 && k < 4) {
+            enc.turn(k, v);
+            return true;
+        }
+        if (op == "btn" && sscanf(arg.c_str(), "%d", &k) == 1 && k >= 0 && k < 4) {
+            enc.press(k, now);
+            return true;
+        }
+        return false;
+    };
     bool trapped = false, stopped = false;
     top->uart_rx = 1;
     top->btn = 0;
     top->flash_miso = 1;
+    top->pot_miso = 1;
+    top->enc_a = top->enc_b = top->enc_sw = 0xF;
 #endif
 
     top->rst = 1;
@@ -271,8 +295,15 @@ int main(int argc, char** argv) {
         top->rst = cyc < reset_cycles;
         top->midi_rx = cyc < reset_cycles ? 1 : drv.level(cyc - reset_cycles);
 #ifdef SOC
+        now = cyc;
         top->uart_rx = host.step(cyc, mon.text);
         top->flash_miso = flash.step(top->flash_sck, top->flash_mosi, top->flash_cs_n);
+        top->pot_miso = pots.step(top->pot_sck, top->pot_mosi, top->pot_cs_n);
+        enc.step(cyc);
+        top->enc_a = enc.a;
+        top->enc_b = enc.b;
+        top->enc_sw = enc.sw();
+        lcd.step(top->lcd_sck, top->lcd_mosi, top->lcd_cs_n, top->lcd_dc);
 #endif
         top->clk = 1;
         top->eval();
@@ -340,6 +371,7 @@ int main(int argc, char** argv) {
         std::ofstream(uart_out, std::ios::binary) << mon.text;
     }
     if (!flash_dump.empty()) flash.dump(flash_dump, flash_dump_off, flash_dump_len);
+    if (!lcd_dump.empty()) lcd.dump(lcd_dump);
     std::string soc_error;
     if (trapped) soc_error = "CPU trap at cycle " + std::to_string(cyc);
     else if (!host.done()) soc_error = "UART script stuck at line " + std::to_string(host.line());

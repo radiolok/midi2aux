@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -55,6 +56,7 @@ struct UartMonitor {
 //   send <hex> ...     send bytes
 //   sendfile <path>    send a file
 //   delay <ms>
+// Other commands go to the `ext` hook (panel models: pot / enc / btn).
 struct UartHost {
     struct Cmd {
         std::string op, arg;
@@ -69,6 +71,7 @@ struct UartHost {
     bool sending = false;
     uint64_t delay_until = 0;
     size_t match_pos = 0;
+    std::function<bool(const std::string&, const std::string&, uint64_t)> ext;
 
     UartHost(const std::string& path, double bc) : bit_cycles(bc) {
         if (path.empty()) return;
@@ -114,7 +117,7 @@ struct UartHost {
                 queue.insert(queue.end(), std::istreambuf_iterator<char>(f), {});
             } else if (c.op == "delay") {
                 delay_until = cyc + (uint64_t)(atof(c.arg.c_str()) * 1e-3 * SYS_CLK_HZ);
-            } else {
+            } else if (!ext || !ext(c.op, c.arg, cyc)) {
                 fprintf(stderr, "UART script line %d: unknown command %s\n", c.line, c.op.c_str());
                 exit(2);
             }
@@ -229,5 +232,145 @@ struct SpiFlash {
         prev_sck = sck;
         prev_cs = cs_n;
         return miso;
+    }
+};
+
+// MCP3208: 8 channels, values settable at run time. SPI mode 0, 24-clock frames.
+struct Mcp3208 {
+    uint16_t value[8] = {2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048};
+    int prev_sck = 0, prev_cs = 1, miso = 1, nbit = 0, ch = 0;
+    uint32_t in = 0;
+    uint64_t frames = 0;
+
+    int step(int sck, int mosi, int cs_n) {
+        if (prev_cs && !cs_n) {
+            nbit = 0;
+            in = 0;
+            miso = 1;
+        }
+        if (!cs_n) {
+            if (!prev_sck && sck) {
+                in = (in << 1) | (mosi & 1);
+                ++nbit;
+                if (nbit == 10) ch = in & 7;
+                if (nbit == 24) ++frames;
+            }
+            if (prev_sck && !sck) {
+                // after clock k (1-based) the device drives bit k+1: null bit at 12, B11..B0 at 13..24
+                int k = nbit + 1;
+                miso = k == 12 ? 0 : (k >= 13 && k <= 24) ? (value[ch] >> (24 - k)) & 1 : 1;
+            }
+        }
+        prev_sck = sck;
+        prev_cs = cs_n;
+        return miso;
+    }
+};
+
+// Rotary encoders (active low, idle high) and buttons; turns are queued and played out slowly
+// enough for the debouncer (TRANSITION_US per quadrature step).
+struct Encoders {
+    static constexpr double TRANSITION_US = 400.0;
+    struct Step {
+        int enc, dir;
+    };
+    std::vector<Step> queue;
+    size_t qpos = 0;
+    int phase[4] = {0, 0, 0, 0};  // quadrature phase 0..3
+    uint64_t next = 0;
+    uint8_t btn = 0;              // pressed buttons (bit per encoder)
+    uint64_t btn_release = 0;
+    int a = 0xF, b = 0xF;
+
+    void turn(int enc, int steps) {
+        for (int i = 0; i < std::abs(steps) * 4; ++i) queue.push_back({enc, steps > 0 ? 1 : -1});
+    }
+    void press(int enc, uint64_t now) {
+        btn |= (uint8_t)(1 << enc);
+        btn_release = now + (uint64_t)(20e-3 * SYS_CLK_HZ);
+    }
+    void step(uint64_t cyc) {
+        if (btn && cyc >= btn_release) btn = 0;
+        if (qpos < queue.size() && cyc >= next) {
+            const Step& s = queue[qpos++];
+            phase[s.enc] = (phase[s.enc] + s.dir + 4) & 3;
+            next = cyc + (uint64_t)(TRANSITION_US * 1e-6 * SYS_CLK_HZ);
+        }
+        static const int qa[4] = {0, 1, 1, 0}, qb[4] = {0, 0, 1, 1};  // A leads B clockwise
+        a = b = 0xF;
+        for (int k = 0; k < 4; ++k) {
+            if (qa[phase[k]]) a &= ~(1 << k);
+            if (qb[phase[k]]) b &= ~(1 << k);
+        }
+    }
+    int sw() const { return 0xF & ~btn; }
+};
+
+// ST7789 in landscape: CASET = x, RASET = y, RAMWR pixel stream (RGB565, big endian).
+struct St7789 {
+    static constexpr int W = 320, H = 240;
+    std::vector<uint16_t> fb = std::vector<uint16_t>(W * H, 0);
+    int prev_sck = 0, prev_cs = 1, nbit = 0;
+    uint8_t byte = 0, cmd = 0;
+    int nargs = 0;
+    uint16_t args[4];
+    int xs = 0, xe = 0, ys = 0, ye = 0, x = 0, y = 0;
+    bool hi = true;
+    uint16_t pix = 0;
+    uint64_t pixels = 0, commands = 0;
+    bool on = false;
+
+    void data(uint8_t d) {
+        if (cmd == 0x2A || cmd == 0x2B) {
+            if (nargs < 4) args[nargs++] = d;
+            if (nargs == 4) {
+                int lo = args[0] << 8 | args[1], hi2 = args[2] << 8 | args[3];
+                if (cmd == 0x2A) xs = lo, xe = hi2;
+                else ys = lo, ye = hi2;
+            }
+        } else if (cmd == 0x2C) {
+            if (hi) {
+                pix = (uint16_t)(d << 8);
+                hi = false;
+            } else {
+                pix |= d;
+                hi = true;
+                if (x < W && y < H) fb[y * W + x] = pix;
+                ++pixels;
+                if (++x > xe) {
+                    x = xs;
+                    ++y;
+                }
+            }
+        }
+    }
+    void command(uint8_t c) {
+        cmd = c;
+        nargs = 0;
+        ++commands;
+        if (c == 0x2C) {
+            x = xs;
+            y = ys;
+            hi = true;
+        }
+        if (c == 0x29) on = true;
+    }
+    void step(int sck, int mosi, int cs_n, int dc) {
+        if (prev_cs && !cs_n) nbit = 0;
+        if (!cs_n && !prev_sck && sck) {
+            byte = (uint8_t)((byte << 1) | (mosi & 1));
+            if (++nbit == 8) {
+                nbit = 0;
+                if (dc) data(byte);
+                else command(byte);
+            }
+        }
+        prev_sck = sck;
+        prev_cs = cs_n;
+    }
+    void dump(const std::string& path) const {
+        FILE* f = fopen(path.c_str(), "wb");
+        fwrite(fb.data(), 2, fb.size(), f);
+        fclose(f);
     }
 };

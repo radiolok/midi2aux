@@ -15,7 +15,8 @@
 #define SLOT_BASE    0x30010000u
 #define XRAM_BASE    0x40000000u
 
-#define PERIPH(n, off) REG32(PERIPH_BASE + (n) * 0x100u + (off))
+#define PERIPH_ADDR(n, off) (PERIPH_BASE + (n) * 0x100u + (off))
+#define PERIPH(n, off) REG32(PERIPH_ADDR(n, off))
 
 /* 0: debug UART */
 #define UART_DATA          PERIPH(0, 0x00)
@@ -52,6 +53,7 @@
 #define SYSINFO_BOOT_WAIT  PERIPH(4, 0x18)
 #define SYSINFO_FW_FLASH   PERIPH(4, 0x1C)
 #define SYSINFO_UART_BAUD  PERIPH(4, 0x20)
+#define SYSINFO_FLAGS      PERIPH(4, 0x24) /* bit0: simulation (shorter delays) */
 #define SYSINFO_ID_AVK6    0x364B5641u
 
 /* 5: SPI master for the flash (and any SPI master block) */
@@ -60,6 +62,32 @@
 #define SPI_CS(n)          PERIPH(n, 0x08)
 #define SPI_DIV(n)         PERIPH(n, 0x0C)
 #define SPI_FLASH          5
+
+/* 6: potentiometers (MCP3208 poller): smoothed 12.4 values, raw 12-bit */
+#define POT(k)             PERIPH(6, 4u * (k))
+#define POT_RAW(k)         PERIPH(6, 0x20u + 4u * (k))
+#define POT_SCANS          PERIPH(6, 0x40)
+
+/* 7: encoders: signed detent counters, buttons */
+#define ENC_COUNT(k)       PERIPH(7, 4u * (k))
+#define ENC_BUTTONS        PERIPH(7, 0x10)
+#define ENC_PRESSED        PERIPH(7, 0x14)
+
+/* 8: ST7789 stream controller */
+#define LCD_FIFO           PERIPH(8, 0x00)
+#define LCD_STATUS         PERIPH(8, 0x04)
+#define LCD_CTRL           PERIPH(8, 0x08) /* {bl[1], rst_n[0]} */
+#define LCD_FG             PERIPH(8, 0x0C)
+#define LCD_BG             PERIPH(8, 0x10)
+#define LCD_DIV            PERIPH(8, 0x14)
+#define LCD_ST_BUSY        (1u << 31)
+#define LCD_ST_FULL        (1u << 30)
+#define LCD_CMD(b)         ((uint32_t)(b))
+#define LCD_DATA(b)        (0x100u | (uint32_t)(b))
+#define LCD_FILL(n)        ((1u << 30) | (uint32_t)(n))
+#define LCD_BITS(n, bits)  ((2u << 30) | ((uint32_t)((n) - 1) << 16) | (uint32_t)(bits))
+#define LCD_COLOR_FG(c)    ((3u << 30) | (uint32_t)(c))
+#define LCD_COLOR_BG(c)    ((3u << 30) | (1u << 16) | (uint32_t)(c))
 
 /* voice engine (fpga/rtl/voice/voice_engine.sv) */
 #define VOICE_REG(k, off)  (VOICE_BASE + (uint32_t)(k) * 0x40u + (off))

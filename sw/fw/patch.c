@@ -36,6 +36,7 @@ const struct param_desc param_table[P_COUNT] = {
     [P_VIBRATO]   = {"vibrato", "Вибрато", 0, 1200, 50, U_CENTS, 0},
     [P_BEND]      = {"bend", "Диап. bend", 0, 24, 2, U_SEMI, 0},
     [P_MASTER]    = {"master", "Уровень", 0, 200, 25, U_PCT, 0},
+    [P_FX_MIX]    = {"fxmix", "FX MIX", 0, 100, 50, U_PCT, 0},
 };
 
 void patch_defaults(struct patch *p)
