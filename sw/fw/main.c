@@ -1,7 +1,8 @@
-/* Firmware, stage 3: polyphonic synth driven by MIDI.
+/* Firmware: polyphonic synth driven by MIDI; UART console (fw/console.h).
  * The log (UART) is non-blocking; "AVKB" on the UART re-enters the boot loader. */
 #include "hw.h"
 #include "lib.h"
+#include "console.h"
 #include "synth.h"
 
 static struct synth synth;
@@ -16,7 +17,8 @@ static void __attribute__((noreturn)) enter_loader(void)
     __builtin_unreachable();
 }
 
-static void poll_loader_magic(void)
+/* UART input: the boot loader magic "AVKB" or console lines */
+static void poll_uart(void)
 {
     static int k;
     static const char magic[4] = {'A', 'V', 'K', 'B'};
@@ -26,6 +28,7 @@ static void poll_loader_magic(void)
     k = (c == magic[k]) ? k + 1 : (c == magic[0]);
     if (k == 4)
         enter_loader();
+    console_feed((char)c);
 }
 
 static void handle_event(uint32_t ev)
@@ -47,7 +50,8 @@ int main(void)
     struct fs_info fs = {SYSINFO_SYS_CLK, SYSINFO_BCK_HALF};
     uint32_t nv = SYSINFO_NUM_VOICES;
     uint32_t fs_mhz = (uint32_t)(((uint64_t)fs.sys_clk * 1000u) / (128u * fs.bck_half));
-    synth_init(&synth, (int)(nv > VA_MAX_VOICES ? VA_MAX_VOICES : nv), fs, &default_patch);
+    synth_init(&synth, (int)(nv > VA_MAX_VOICES ? VA_MAX_VOICES : nv), fs);
+    console_init(&synth);
 
     log_printf("AVK6 synth fw, hw version %08x\n", (unsigned)SYSINFO_VERSION);
     log_printf("sys_clk %u Hz, fs %u.%03u Hz, RAM %u bytes, %u voices\n", (unsigned)fs.sys_clk,
@@ -64,7 +68,7 @@ int main(void)
             MIDI_CTRL = 1;
         }
         log_poll();
-        poll_loader_magic();
+        poll_uart();
         if (cycles() - t_led > fs.sys_clk / 2) {
             t_led = cycles();
             GPIO_OUT ^= 1u;

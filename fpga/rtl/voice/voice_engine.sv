@@ -17,6 +17,7 @@
 //          (A/D/R: {shift[21:17], mant[16:0]}; S: Q0.16)
 //     0x48 PM  0x4C CM  0x50 AM     global pitch / cutoff offsets, amplitude Q2.16
 //     0x54 INFO R: {NUM_VOICES[15:0]}
+//     0x58 ENV_VOICE  voice whose ADSR1 level is output on env_out (modulation source ENV)
 `default_nettype none
 
 module voice_engine #(
@@ -35,10 +36,12 @@ module voice_engine #(
     input  wire signed [22:0]  pm_ext,
     input  wire signed [22:0]  cm_ext,
     input  wire signed [17:0]  am_ext,     // Q2.16, 1.0 = no change
+    input  wire signed [16:0]  pw_ext,     // added to PW, clamped to 0..65535
     // output
     output logic signed [19:0] s0,         // Q4.16
     output logic               s0_valid,
-    output logic               busy
+    output logic               busy,
+    output logic signed [17:0] env_out     // ADSR1 of voice ENV_VOICE (Q2.16)
 );
 
     localparam int VW = (NUM_VOICES > 1) ? $clog2(NUM_VOICES) : 1;
@@ -63,6 +66,7 @@ module voice_engine #(
     logic [21:0]        a1c, d1c, r1c, a2c, d2c, r2c;
     logic [16:0]        s1, s2;
     logic signed [22:0] pm_reg, cm_reg;
+    logic [VW-1:0]      env_voice;
 
     wire        is_glob = addr[16];
     wire [5:0]  greg    = addr[7:2];
@@ -77,7 +81,7 @@ module voice_engine #(
             master <= 18'sd65536; am_reg <= 18'sd65536;
             a1c <= '0; d1c <= '0; r1c <= '0; a2c <= '0; d2c <= '0; r2c <= '0;
             s1 <= 17'd65536; s2 <= '0;
-            pm_reg <= '0; cm_reg <= '0;
+            pm_reg <= '0; cm_reg <= '0; env_voice <= '0;
         end else if (req && we && is_glob) begin
             case (greg)
                 6'd0:  {wave2, wave1} <= wdata[3:0];
@@ -101,6 +105,7 @@ module voice_engine #(
                 6'd18: pm_reg <= wdata[22:0];
                 6'd19: cm_reg <= wdata[22:0];
                 6'd20: am_reg <= wdata[17:0];
+                6'd22: env_voice <= wdata[VW-1:0];
                 default: ;
             endcase
         end
@@ -115,12 +120,33 @@ module voice_engine #(
 
     wire vwr = req && we && !is_glob;
 
+    // After reset every voice is cleared (registers and state), one voice per clk
+    // (NUM_VOICES clk); the engine does not run until that is done.
+    logic          clr;
+    logic [VW-1:0] clr_v;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            clr   <= 1'b1;
+            clr_v <= '0;
+        end else if (clr) begin
+            clr_v <= clr_v + 1'b1;
+            if (clr_v == VW'(NUM_VOICES - 1)) clr <= 1'b0;
+        end
+    end
+
+    // CPU writes win over the clear pass (the CPU does not write that early anyway)
     always_ff @(posedge clk) begin
         if (vwr && vreg == 4'd0) r_pitch1[vsel] <= wdata[20:0];
+        else if (clr)            r_pitch1[clr_v] <= '0;
         if (vwr && vreg == 4'd1) r_pitch2[vsel] <= wdata[20:0];
-        if (vwr && vreg == 4'd2) r_gate[vsel]   <= wdata[1:0];
-        if (vwr && vreg == 4'd3) r_vel[vsel]    <= wdata[17:0];
-        if (vwr && vreg == 4'd4) r_cofs[vsel]   <= wdata[21:0];
+        else if (clr)            r_pitch2[clr_v] <= '0;
+        if (vwr && vreg == 4'd2) r_gate[vsel] <= wdata[1:0];
+        else if (clr)            r_gate[clr_v] <= '0;
+        if (vwr && vreg == 4'd3) r_vel[vsel] <= wdata[17:0];
+        else if (clr)            r_vel[clr_v] <= '0;
+        if (vwr && vreg == 4'd4) r_cofs[vsel] <= wdata[21:0];
+        else if (clr)            r_cofs[clr_v] <= '0;
     end
 
     // ------------------------------------------------ per-voice state (engine)
@@ -254,6 +280,8 @@ module voice_engine #(
     logic [31:0]        lfsr;
     logic signed [17:0] am_eff;
     logic signed [22:0] pm_tot, cm_tot;
+    logic [15:0]        pw_tot;
+    wire signed [17:0]  pw_sum = $signed({2'b00, pw}) + 18'(pw_ext);
 
     wire rt = gate_r[1] != s.rtprev;
     wire [1:0]  st1e = env_edge(s.st1, gate_r[0], s.gprev, rt);
@@ -303,6 +331,11 @@ module voice_engine #(
             am_eff <= 18'sd65536;
             pm_tot <= '0;
             cm_tot <= '0;
+            pw_tot <= 16'h8000;
+            env_out <= '0;
+        end else if (clr) begin
+            st_mem[clr_v]     <= '0;
+            status_mem[clr_v] <= '0;
         end else if (tick && !run && !fin) begin
             run    <= 1'b1;
             busy   <= 1'b1;
@@ -311,6 +344,7 @@ module voice_engine #(
             sum    <= '0;
             pm_tot <= pm_reg + pm_ext;
             cm_tot <= cm_reg + cm_ext;
+            pw_tot <= pw_sum < 0 ? 16'h0 : pw_sum > 18'sd65535 ? 16'hFFFF : pw_sum[15:0];
             ma     <= 25'(am_reg);
             mb     <= am_ext;
             fin_t  <= 2'd1;  // am_eff from the product at t = 0 of voice 0
@@ -338,6 +372,8 @@ module voice_engine #(
                         e1n <= 31'(ONE30); st1n <= DECAY;
                     end else if (st1a == RELEASE && e1_sum <= 0) begin
                         e1n <= '0; st1n <= IDLE;
+                    end else if (e1_sum < 0) begin    // DECAY to sustain 0
+                        e1n <= '0; st1n <= st1a;
                     end else begin
                         e1n <= e1_sum[30:0]; st1n <= st1a;
                     end
@@ -361,6 +397,10 @@ module voice_engine #(
                         e2n <= '0; st2n <= IDLE;
                         ma  <= 25'(env2_depth);
                         mb  <= '0;
+                    end else if (e2_sum < 0) begin    // DECAY to sustain 0
+                        e2n <= '0; st2n <= st2a;
+                        ma  <= 25'(env2_depth);
+                        mb  <= '0;
                     end else begin
                         e2n <= e2_sum[30:0]; st2n <= st2a;
                         ma  <= 25'(env2_depth);
@@ -382,11 +422,11 @@ module voice_engine #(
                 5'd6: begin
                     ph2n <= s.ph2 + p2i_out;
                     a    <= sat18(prod >>> 16);
-                    o1   <= wave(wave1, ph1n, pw, rom_q, rom_quad_q);
+                    o1   <= wave(wave1, ph1n, pw_tot, rom_q, rom_quad_q);
                     lfsr <= (lfsr >> 1) ^ (lfsr[0] ? LFSR_TAPS : 32'h0);
                 end
                 5'd7: begin
-                    o2 <= wave(wave2, ph2n, pw, rom_q, rom_quad_q);
+                    o2 <= wave(wave2, ph2n, pw_tot, rom_q, rom_quad_q);
                     nz <= 18'($signed({2'b00, lfsr[31:15]}) - 19'sd65536);
                     ma <= 25'(o1);
                     mb <= g1;
@@ -453,6 +493,7 @@ module voice_engine #(
                     st_mem[v] <= '{ph1: ph1n, ph2: ph2n, e1: e1n, e2: e2n, st1: st1n, st2: st2n,
                                    gprev: gate_r[0], rtprev: gate_r[1], lp: lp, bp: bp};
                     status_mem[v] <= {st2n, st1n, 2'b00, env1q};
+                    if (v == env_voice) env_out <= env1q;
                     t <= '0;
                     if (v == VW'(NUM_VOICES - 1)) begin
                         run <= 1'b0;

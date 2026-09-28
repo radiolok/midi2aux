@@ -11,6 +11,7 @@ audio/dac_scale.sv
 audio/tanh_rom.sv
 audio/softclip.sv
 voice/voice_engine.sv
+voice/mod_unit.sv
 midi/uart_rx.sv
 midi/uart_tx.sv
 midi/midi_parser.sv

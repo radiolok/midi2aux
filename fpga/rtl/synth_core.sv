@@ -6,6 +6,7 @@
 //   0x1000_0000  peripherals, 0x100 per block:
 //                0 UART  1 TIMER  2 GPIO  3 MIDI  4 SYSINFO  5 SPI flash
 //   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
+//   0x2002_0000  modulation unit (voice/mod_unit.sv): LFOs, modulation matrix
 //   0x3000_0000  audio output: 0x00 OUT (L), 0x04 OUT2 (R) DC offsets, Q2.16 (1.0 = МЕ)
 // OUT = softclip(voices + DC_L), OUT2 = softclip(DC_R).
 // Unmapped accesses complete with zero data.
@@ -48,7 +49,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0003_0000;  // stage 3
+    localparam logic [31:0] VERSION = 32'h0004_0000;  // stage 4
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -83,7 +84,7 @@ module synth_core #(
     /* verilator lint_on PINCONNECTEMPTY */
 
     // ------------------------------------------------------------ bus decode
-    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_VOICE, SEL_AUDIO} sel_t;
+    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_VOICE, SEL_MOD, SEL_AUDIO} sel_t;
 
     logic        req, we;
     sel_t        sel, sel_q;
@@ -101,6 +102,7 @@ module synth_core #(
         else if (mem_addr[31:12] == 20'h00100)        sel = SEL_ROM;  // 4 KB window
         else if (mem_addr[31:12] == 20'h10000)        sel = SEL_PERIPH;
         else if (mem_addr[31:17] == 15'h1000)         sel = SEL_VOICE;
+        else if (mem_addr[31:12] == 20'h20020)        sel = SEL_MOD;
         else if (mem_addr[31:12] == 20'h30000)        sel = SEL_AUDIO;
     end
 
@@ -111,7 +113,7 @@ module synth_core #(
         blk_q <= blk;
     end
 
-    logic [31:0] ram_q, rom_q, audio_q, voice_q;
+    logic [31:0] ram_q, rom_q, audio_q, voice_q, mod_q;
     logic [31:0] prd [16];
 
     always_comb begin
@@ -120,6 +122,7 @@ module synth_core #(
             SEL_ROM:    mem_rdata = rom_q;
             SEL_PERIPH: mem_rdata = prd[blk_q];
             SEL_VOICE:  mem_rdata = voice_q;
+            SEL_MOD:    mem_rdata = mod_q;
             SEL_AUDIO:  mem_rdata = audio_q;
             default:    mem_rdata = '0;
         endcase
@@ -211,11 +214,22 @@ module synth_core #(
         .slot_next(slot_next), .audio_tick(audio_tick)
     );
 
+    logic signed [22:0] mod_pm, mod_cm;
+    logic signed [17:0] mod_am, lfo1, lfo2, env_out;
+    logic signed [16:0] mod_pw;
+
+    mod_unit u_mod (
+        .clk(clk), .rst(rst), .tick(audio_tick),
+        .req(req && sel == SEL_MOD), .we(we), .addr(mem_addr[7:0]), .wdata(mem_wdata), .rdata(mod_q),
+        .in1('0), .in2('0), .sync(1'b0), .sync_edge(1'b0), .env(env_out),
+        .pm(mod_pm), .cm(mod_cm), .am(mod_am), .pw(mod_pw), .lfo1(lfo1), .lfo2(lfo2)
+    );
+
     voice_engine #(.NUM_VOICES(NUM_VOICES)) u_voices (
         .clk(clk), .rst(rst), .tick(audio_tick),
         .req(req && sel == SEL_VOICE), .we(we), .addr(mem_addr[16:0]), .wdata(mem_wdata), .rdata(voice_q),
-        .pm_ext('0), .cm_ext('0), .am_ext(18'sd65536),
-        .s0(s0), .s0_valid(s0_valid), .busy(engine_busy)
+        .pm_ext(mod_pm), .cm_ext(mod_cm), .am_ext(mod_am), .pw_ext(mod_pw),
+        .s0(s0), .s0_valid(s0_valid), .busy(engine_busy), .env_out(env_out)
     );
 
     always_ff @(posedge clk) begin
@@ -249,7 +263,7 @@ module synth_core #(
         else     dac_xsmt <= 1'b1;
     end
 
-    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:6], s0_valid, engine_busy};
+    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:6], s0_valid, engine_busy, lfo1, lfo2};
 
 endmodule
 

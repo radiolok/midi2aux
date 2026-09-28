@@ -8,11 +8,12 @@ Per sample, for every voice v = 0..N-1 in order (all shifts are arithmetic, floo
    Segment = one-pole approach to a target T with coefficient (mant, shift):
        step = ((T - e) >> 14) * mant >> shift;  e += step
    ATTACK:  T = 1.3 (2^30 * 1.3), stops at 1.0 -> DECAY
-   DECAY:   T = sustain << 14 (sustain Q0.16), stays there (sustain phase)
+   DECAY:   T = sustain << 14 (sustain Q0.16), stays there (sustain phase), e >= 0
    RELEASE: T = -1e-3 (so it ends at the -60 dB time), stops at 0 -> IDLE
    env_q = e >> 14 (Q2.16).
 2. Oscillators: pitch = clamp21(PITCHk + pm); phase += pitch2inc(pitch);
-   waves from the 32-bit phase, +-1.0 = +-2^16: saw, square/PWM, triangle, sine.
+   waves from the 32-bit phase, +-1.0 = +-2^16: saw, square/PWM (pw = clamp(PW + pw_mod, 0, 65535)),
+   triangle, sine.
    Noise: 32-bit Galois LFSR (shared, one step per voice), n = (lfsr >> 15) - 2^16.
 3. Mix: x = sat18((o1*G1 + o2*G2 + n*GN) >> 16).
 4. Cutoff (log pitch units, like oscillators): c = clamp(CUTOFF + CUT_OFS + (env2_q*ENV2_DEPTH >> 16) + cm)
@@ -81,6 +82,7 @@ class GlobalParams:
     pm: int = 0               # global pitch offset (bend), signed
     cm: int = 0               # global cutoff offset, signed
     am: int = 1 << 16         # global amplitude, Q2.16
+    pw_mod: int = 0           # pulse width offset from the modulation unit, signed
 
 
 @dataclass
@@ -130,6 +132,8 @@ def env_step(e, st, gate, gate_prev, retrig, p: EnvParams):
         e, st = ONE30, DECAY
     elif st == RELEASE and e <= 0:
         e, st = 0, IDLE
+    elif e < 0:  # DECAY to sustain 0 can step below zero (floor of (T - e) >> 14)
+        e = 0
     return e, st
 
 
@@ -175,7 +179,8 @@ class VoiceEngine:
 
         s.ph1 = (s.ph1 + pitch2inc(clamp(r.pitch1 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
         s.ph2 = (s.ph2 + pitch2inc(clamp(r.pitch2 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
-        o1, o2 = wave(s.ph1, g.wave1, g.pw), wave(s.ph2, g.wave2, g.pw)
+        pw = clamp(g.pw + g.pw_mod, 0, 65535)
+        o1, o2 = wave(s.ph1, g.wave1, pw), wave(s.ph2, g.wave2, pw)
         self.lfsr = lfsr_step(self.lfsr)
         nz = (self.lfsr >> 15) - (1 << 16)
         x = sat((o1 * g.g1 + o2 * g.g2 + nz * g.gn) >> 16, 18)

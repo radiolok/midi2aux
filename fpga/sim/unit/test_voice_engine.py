@@ -86,7 +86,8 @@ class Harness:
 
 
 def rand_env(rng):
-    return voice.env_params(rng.uniform(0.001, 0.01), rng.uniform(0.002, 0.03), rng.random(),
+    sus = rng.choice([0.0, 1.0, rng.random(), rng.random()])  # 0 and 1 are corner cases
+    return voice.env_params(rng.uniform(0.001, 0.01), rng.uniform(0.002, 0.03), sus,
                             rng.uniform(0.002, 0.02), FS)
 
 
@@ -99,7 +100,9 @@ async def setup(dut):
     dut.pm_ext.value = 0
     dut.cm_ext.value = 0
     dut.am_ext.value = 1 << 16
+    dut.pw_ext.value = 0
     await start(dut)
+    await ClockCycles(dut.clk, NV + 2)  # clear pass after reset
 
 
 async def randomize(h, rng):
@@ -107,8 +110,8 @@ async def randomize(h, rng):
     await h.set_glob("pw", rng.randrange(1 << 16))
     for g in ("g1", "g2", "gn"):
         await h.set_glob(g, rng.choice([0, rng.randrange(1 << 16), 1 << 16]))
-    await h.set_glob("cutoff", rng.randrange(1_300_000, voice.C_MAX + 1))
-    await h.set_glob("env2_depth", rng.randrange(-(1 << 18), 1 << 18))
+    await h.set_glob("cutoff", rng.randrange(1_000_000, voice.C_MAX + 1))
+    await h.set_glob("env2_depth", rng.randrange(-(1 << 19), 1 << 19))
     await h.set_glob("res_q", rng.choice([0, rng.randrange(1 << 17), 1 << 16]))
     await h.set_glob("fmode", rng.randrange(4))
     await h.set_glob("master", rng.randrange(1 << 17))
@@ -146,6 +149,8 @@ async def bit_exact_random(dut):
                 h.am_ext = rng.randrange(1 << 17)
                 dut.am_ext.value = h.am_ext
                 await h.set_glob("am", h.am_reg)  # refresh model am
+                h.m.g.pw_mod = rng.randrange(-(1 << 16), 1 << 16)
+                dut.pw_ext.value = h.m.g.pw_mod
             rtl, ref = await h.sample()
             if rtl != ref:
                 mism += 1

@@ -51,6 +51,7 @@ struct UartMonitor {
 // Host side of the debug UART, driven by a script:
 //   wait <text>        wait until the output (after the previous wait match) contains text
 //   sendstr <text>     send ASCII
+//   sendline <text>    send ASCII + "\n"
 //   send <hex> ...     send bytes
 //   sendfile <path>    send a file
 //   delay <ms>
@@ -97,8 +98,9 @@ struct UartHost {
                 size_t p = out.find(c.arg, match_pos);
                 if (p == std::string::npos) break;
                 match_pos = p + c.arg.size();
-            } else if (c.op == "sendstr") {
+            } else if (c.op == "sendstr" || c.op == "sendline") {
                 queue.insert(queue.end(), c.arg.begin(), c.arg.end());
+                if (c.op == "sendline") queue.push_back('\n');
             } else if (c.op == "send") {
                 std::istringstream ss(c.arg);
                 std::string tok;

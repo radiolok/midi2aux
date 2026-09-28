@@ -87,3 +87,11 @@ uint32_t vel_amp(uint8_t vel, uint32_t depth_q16)
     uint32_t v2 = (uint32_t)vel * vel * 65536u / (127u * 127u); /* (v/127)^2, Q16 */
     return 65536u - (uint32_t)(((uint64_t)depth_q16 * (65536u - v2)) >> 16);
 }
+
+uint32_t lfo_inc(const struct fs_info *fs, uint32_t hz_x100)
+{
+    /* hz / fs * 2^32 = hz_x100 * 2^32 * 128 * half / (100 * sys_clk) */
+    uint64_t num = ((uint64_t)hz_x100 << 32) * 128u * fs->bck_half;
+    uint64_t den = (uint64_t)fs->sys_clk * 100u;
+    return (uint32_t)((num + den / 2) / den);
+}

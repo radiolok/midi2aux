@@ -18,6 +18,7 @@ uint32_t env_coef(const struct fs_info *fs, uint32_t time_us, int attack); /* {s
 uint32_t res_damping(uint32_t q_x100);                       /* resonance Q * 100 -> 1/Q, Q2.16 */
 uint32_t vel_amp(uint8_t vel, uint32_t depth_q16);           /* 1 - depth * (1 - (v/127)^2) */
 float    fexp_neg(float x);                                   /* e^-x, x >= 0 */
+uint32_t lfo_inc(const struct fs_info *fs, uint32_t hz_x100);   /* phase increment per sample */
 
 #define PITCH_CUTOFF_MAX 1995158 /* engine clamp: fc = 0.34 fs */
 

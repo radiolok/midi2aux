@@ -1,13 +1,18 @@
 /* synth.c against a fake register file. */
+#include <stdlib.h>
+
 #include "unity_lite.h"
 
 #include "../fw/params.c"
+#include "../fw/patch.c"
 #include "../fw/synth.c"
 #include "../fw/voice_alloc.c"
+#include "../lib/xprintf.c"
 
-#define NREG 0x20000
-static uint32_t regs[NREG / 4 * 2];
-static uint32_t idx(uint32_t a) { return ((a >> 16) & 1) * (NREG / 4) + ((a & 0xFFFF) >> 2); }
+/* fake register space: 0x2000_0000 voices, 0x2001_0000 globals, 0x2002_0000 modulation */
+static uint32_t regs[3 * 16384];
+static uint32_t idx(uint32_t a) { return ((a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
+void uart_putc(char c) { (void)c; }
 void hw_write(uint32_t a, uint32_t v) { regs[idx(a)] = v; }
 uint32_t hw_read(uint32_t a) { return regs[idx(a)]; }
 
@@ -17,7 +22,7 @@ static const struct fs_info FS = {99000000u, 16u};
 static void init(int n)
 {
     memset(regs, 0, sizeof regs);
-    synth_init(&s, n, FS, &default_patch);
+    synth_init(&s, n, FS);
 }
 
 static void set_status(int v, int st, uint32_t level) { regs[idx(VOICE_REG(v, V_STATUS))] = (uint32_t)st << 20 | level; }
@@ -31,6 +36,28 @@ static void test_patch_registers(void)
     CHECK_EQ(hw_read(SYNTH_REG(S_A1)), env_coef(&FS, 5000, 1));
     CHECK_EQ(hw_read(SYNTH_REG(S_S2)), 19661);
     CHECK_EQ(hw_read(SYNTH_REG(S_MASTER)), 16384);
+    synth_set_param(&s, P_CUTOFF, 100000); /* clamped to 16 kHz */
+    CHECK_EQ(s.p.v[P_CUTOFF], 16000);
+    CHECK_EQ(hw_read(SYNTH_REG(S_CUTOFF)), hz_pitch(&FS, 16000));
+    synth_set_param(&s, P_WAVE1, 3);
+    CHECK_EQ(hw_read(SYNTH_REG(S_WAVES)), 3);
+}
+
+static void test_param_table(void)
+{
+    char buf[32];
+    CHECK_EQ(param_find("cutoff"), P_CUTOFF);
+    CHECK_EQ(param_find("nope"), -1);
+    for (int i = 0; i < P_COUNT; i++) {
+        const struct param_desc *d = &param_table[i];
+        CHECK(d->name && d->label && d->min <= d->def && d->def <= d->max);
+        param_format(i, d->def, buf, sizeof buf);
+        CHECK(buf[0] != 0);
+    }
+    param_format(P_LFO1_RATE, 550, buf, sizeof buf);
+    CHECK_STR(buf, "5.50 Hz");
+    param_format(P_FMODE, 2, buf, sizeof buf);
+    CHECK_STR(buf, "hp");
 }
 
 static void test_note_on_off(void)
@@ -96,8 +123,32 @@ static void test_sustain(void)
     CHECK_EQ(hw_read(VOICE_REG(0, V_GATE)), 0);
 }
 
+static void test_modulation(void)
+{
+    init(4);
+    CHECK_EQ(hw_read(MOD_REG(M_ROUTE(0))), DST_PM << 8 | SRC_MODWHEEL << 4 | SRC_LFO1);
+    CHECK_EQ(hw_read(MOD_REG(M_DEPTH(0))), cents_pitch(50));
+    CHECK_EQ(hw_read(MOD_REG(M_LFO_INC(0))), lfo_inc(&FS, 550));
+    CHECK(labs((long)lfo_inc(&FS, 550) - (long)(5.5 * 4294967296.0 / 48339.84375)) <= 1);
+    synth_midi(&s, 0xB0, 1, 127);
+    CHECK_EQ(hw_read(MOD_REG(M_MODWHEEL)), 65536);
+    synth_midi(&s, 0xB0, 1, 64);
+    CHECK_EQ(hw_read(MOD_REG(M_MODWHEEL)), (64u << 16) / 127u);
+    CHECK_EQ(hw_read(MOD_REG(M_GATE)), 0);
+    synth_midi(&s, 0x90, 60, 100);
+    int v = synth_midi(&s, 0x90, 64, 100);
+    CHECK_EQ(hw_read(SYNTH_REG(S_ENV_VOICE)), (uint32_t)v);
+    CHECK_EQ(hw_read(MOD_REG(M_GATE)), 1);
+    synth_midi(&s, 0x80, 60, 0);
+    CHECK_EQ(hw_read(MOD_REG(M_GATE)), 1);
+    synth_midi(&s, 0x80, 64, 0);
+    CHECK_EQ(hw_read(MOD_REG(M_GATE)), 0);
+}
+
 int main(void)
 {
+    RUN(test_modulation);
+    RUN(test_param_table);
     RUN(test_patch_registers);
     RUN(test_note_on_off);
     RUN(test_retrigger_toggles);

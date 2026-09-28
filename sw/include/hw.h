@@ -92,6 +92,23 @@
 #define S_CM               0x4Cu
 #define S_AM               0x50u
 #define S_INFO             0x54u
+#define S_ENV_VOICE        0x58u
+
+/* modulation unit (fpga/rtl/voice/mod_unit.sv) */
+#define MOD_BASE           0x20020000u
+#define MOD_REG(off)       (MOD_BASE + (off))
+#define M_LFO_INC(i)       (0x00u + 8u * (i))
+#define M_LFO_CFG(i)       (0x04u + 8u * (i)) /* {sync_reset[4], wave[2:0]} */
+#define M_MODWHEEL         0x10u
+#define M_AM_BASE          0x14u
+#define M_AUX              0x18u
+#define M_GATE             0x1Cu
+#define M_ROUTE(k)         (0x40u + 8u * (k)) /* {dst[10:8], via[7:4], src[3:0]} */
+#define M_DEPTH(k)         (0x44u + 8u * (k))
+#define M_LFO_VAL(i)       (0x80u + 4u * (i))
+enum { SRC_ZERO, SRC_LFO1, SRC_LFO2, SRC_MODWHEEL, SRC_IN1, SRC_IN2, SRC_SYNC, SRC_ENV, SRC_GATE, SRC_AUX };
+enum { DST_NONE, DST_PM, DST_CM, DST_AM, DST_PW };
+enum { LFO_SINE, LFO_TRI, LFO_SAW_UP, LFO_SQUARE, LFO_RANDOM, LFO_SAW_DOWN };
 
 /* audio output (Q2.16, 1.0 = machine unit = 65536) */
 #define AUDIO_OUT_L        REG32(AUDIO_BASE + 0x00)
