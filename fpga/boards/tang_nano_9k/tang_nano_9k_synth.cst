@@ -59,3 +59,6 @@ IO_PORT "flash_cs_n" IO_TYPE=LVCMOS33 DRIVE=8;
 // Panel (stage 5): MCP3208 SPI (pot_*), encoders enc_a/enc_b/enc_sw[3:0] (pull-ups, active low),
 // ST7789 (lcd_*). NOT ASSIGNED YET: pins are chosen with the carrier board (HO-01); until then
 // Gowin EDA places these ports itself. Encoder inputs need PULL_MODE=UP.
+
+// AVK link (stage 6): 2x AD7091R (adc_convst_n, adc_cs_n, adc_sclk shared; adc_sdo1/adc_sdo2),
+// SYNC comparator output (sync_in). NOT ASSIGNED YET (HO-01), same as the panel.

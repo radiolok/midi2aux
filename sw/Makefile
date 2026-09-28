@@ -25,7 +25,7 @@ CFLAGS  := $(ARCH) -Os -g -std=c11 -ffreestanding -fno-builtin -ffunction-sectio
 LDFLAGS := $(ARCH) -nostdlib -nostartfiles -Wl,--gc-sections -Wl,--no-warn-rwx-segments
 
 LIB_SRCS  := lib/uart.c lib/xprintf.c lib/crc32.c lib/string.c lib/flash.c lib/log.c
-FW_SRCS   := fw/start.S fw/main.c fw/hw.c fw/synth.c fw/params.c fw/patch.c fw/console.c fw/voice_alloc.c \
+FW_SRCS   := fw/start.S fw/main.c fw/hw.c fw/synth.c fw/params.c fw/patch.c fw/console.c fw/voice_alloc.c fw/avk.c \
              fw/ui.c fw/lcd.c fw/font.c fw/font8x16.c $(LIB_SRCS)
 BOOT_SRCS := boot/start.S boot/boot.c $(filter-out lib/log.c,$(LIB_SRCS))
 

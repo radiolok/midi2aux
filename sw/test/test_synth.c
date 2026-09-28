@@ -6,15 +6,13 @@
 #include "../fw/params.c"
 #include "../fw/patch.c"
 #include "../fw/synth.c"
+#include "../fw/avk.c"
 #include "../fw/voice_alloc.c"
 #include "../lib/xprintf.c"
 
-/* fake register space: 0x2000_0000 voices, 0x2001_0000 globals, 0x2002_0000 modulation */
-static uint32_t regs[3 * 16384];
-static uint32_t idx(uint32_t a) { return ((a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
+
+#include "fake_regs.h"
 void uart_putc(char c) { (void)c; }
-void hw_write(uint32_t a, uint32_t v) { regs[idx(a)] = v; }
-uint32_t hw_read(uint32_t a) { return regs[idx(a)]; }
 
 static struct synth s;
 static const struct fs_info FS = {99000000u, 16u};
@@ -145,8 +143,113 @@ static void test_modulation(void)
     CHECK_EQ(hw_read(MOD_REG(M_GATE)), 0);
 }
 
+static void init_avk(void)
+{
+    memset(regs, 0, sizeof regs);
+    regs[idx(SLOT_REG(0, SL_TYPE))] = SLOT_MATH;
+    regs[idx(SLOT_REG(1, SL_TYPE))] = SLOT_MATH;
+    synth_init(&s, 4, FS);
+}
+
+static void test_avk_defaults(void)
+{
+    init(4); /* no slots in the hardware: nothing enabled */
+    CHECK_EQ(s.nslots, 0);
+    init_avk();
+    CHECK_EQ(s.nslots, 2);
+    CHECK_EQ(hw_read(BUS_OUT2_SEL), BUS_LFO1);
+    CHECK_EQ(hw_read(BUS_OUT2_GAIN), 65536);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_IN1)), 0);
+    for (int k = 0; k < 2; k++) {
+        CHECK_EQ(hw_read(SLOT_REG(k, SL_BYPASS)), 1);
+        CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + k)), 0);
+    }
+}
+
+static void test_avk_slots_and_out2(void)
+{
+    init_avk();
+    synth_set_param(&s, P_SLOT2_OP, 1 + MATH_MUL);
+    synth_set_param(&s, P_SLOT2_A, BUS_IN1);
+    synth_set_param(&s, P_SLOT2_B, BUS_IN2);
+    synth_set_param(&s, P_SLOT2_K, -50);
+    synth_set_param(&s, P_FX_MIX, 100);
+    CHECK_EQ(hw_read(SLOT_REG(1, SL_BYPASS)), 0);
+    CHECK_EQ(hw_read(SLOT_REG(1, SL_PARAM(0))), MATH_MUL);
+    CHECK_EQ((int32_t)hw_read(SLOT_REG(1, SL_PARAM(1))), -32768);
+    CHECK_EQ(hw_read(SLOT_REG(1, SL_SEL_A)), BUS_IN1);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + 1)), 65536);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0)), 0);
+    synth_set_param(&s, P_FX_MIX, 25);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + 1)), 16384);
+    synth_set_param(&s, P_IN1_MIX, -100);
+    CHECK_EQ((int32_t)hw_read(BUS_GAIN(BUS_IN1)), -65536);
+    synth_set_param(&s, P_OUT2_SRC, BUS_GATE);
+    synth_set_param(&s, P_OUT2_GAIN, 200);
+    CHECK_EQ(hw_read(BUS_OUT2_SEL), BUS_GATE);
+    CHECK_EQ(hw_read(BUS_OUT2_GAIN), 131072);
+}
+
+static int voice_of(uint8_t note)
+{
+    for (int v = 0; v < s.va.n; v++)
+        if (s.va.v[v].note == note && s.va.v[v].held)
+            return v;
+    return -1;
+}
+
+static void test_avk_sync(void)
+{
+    init_avk();
+    uint32_t *edges = &regs[idx(PERIPH_ADDR(9, 0x08))];
+    CHECK_EQ(avk_poll(&s), 0);
+    *edges += 1; /* SYNC_OFF: edges are only counted */
+    CHECK_EQ(avk_poll(&s), 1);
+    CHECK_EQ(s.sync_note, -1);
+    synth_set_param(&s, P_SYNC_MODE, SYNC_LFO);
+    CHECK_EQ(hw_read(MOD_REG(M_LFO_CFG(0))) >> 4 & 1, 1);
+    CHECK_EQ(hw_read(MOD_REG(M_LFO_CFG(1))) >> 4 & 1, 1);
+    synth_set_param(&s, P_SYNC_MODE, SYNC_NOTE);
+    CHECK_EQ(hw_read(MOD_REG(M_LFO_CFG(0))) >> 4 & 1, 0);
+    *edges += 1;
+    avk_poll(&s);
+    CHECK_EQ(s.sync_note, 60);
+    int v = voice_of(60);
+    CHECK(v >= 0);
+    CHECK_EQ(hw_read(VOICE_REG(v, V_GATE)) & 1, 1);
+    uint32_t rt = hw_read(VOICE_REG(v, V_GATE)) >> 1 & 1;
+    *edges += 3; /* the next edge retriggers the same note */
+    avk_poll(&s);
+    CHECK_EQ(voice_of(60), v);
+    CHECK_EQ(hw_read(VOICE_REG(v, V_GATE)) >> 1 & 1, rt ^ 1);
+    CHECK_EQ(hw_read(MOD_REG(M_GATE)), 1);
+    synth_set_param(&s, P_SYNC_MODE, SYNC_OFF); /* releases the note */
+    CHECK_EQ(s.sync_note, -1);
+    CHECK_EQ(hw_read(VOICE_REG(v, V_GATE)) & 1, 0);
+    regs[idx(PERIPH_ADDR(9, 0x04))] = 99000; /* 1 kHz */
+    CHECK_EQ(avk_sync_hz100(&s), 100000);
+}
+
+static void test_avk_calibration(void)
+{
+    init_avk();
+    regs[idx(ADC_RAW(1))] = 2051;
+    avk_cal_zero(1);
+    CHECK_EQ(hw_read(ADC_OFFSET(1)), 2051);
+    regs[idx(ADC_RAW(1))] = 2051 + 1638; /* +10 V ideally: 1638.4 codes */
+    CHECK_EQ(avk_cal_ref(1, 10000), 1);
+    uint32_t g = hw_read(ADC_GAIN(1));
+    CHECK(llabs((((int64_t)1638 * g) >> 16) - 65536) <= 1);
+    regs[idx(ADC_RAW(1))] = 2051;
+    CHECK_EQ(avk_cal_ref(1, 10000), 0);
+}
+
 int main(void)
 {
+    RUN(test_avk_defaults);
+    RUN(test_avk_slots_and_out2);
+    RUN(test_avk_sync);
+    RUN(test_avk_calibration);
     RUN(test_modulation);
     RUN(test_param_table);
     RUN(test_patch_registers);

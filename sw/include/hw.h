@@ -138,9 +138,40 @@ enum { SRC_ZERO, SRC_LFO1, SRC_LFO2, SRC_MODWHEEL, SRC_IN1, SRC_IN2, SRC_SYNC, S
 enum { DST_NONE, DST_PM, DST_CM, DST_AM, DST_PW };
 enum { LFO_SINE, LFO_TRI, LFO_SAW_UP, LFO_SQUARE, LFO_RANDOM, LFO_SAW_DOWN };
 
-/* audio output (Q2.16, 1.0 = machine unit = 65536) */
+/* 9: SYNC input (after the comparator) */
+#define SYNC_LEVEL         PERIPH(9, 0x00)
+#define SYNC_PERIOD        PERIPH(9, 0x04) /* sys_clk cycles between the last two rising edges */
+#define SYNC_EDGES         PERIPH(9, 0x08)
+#define SYNC_FILTER        PERIPH(9, 0x0C)
+
+/* 10: AVK inputs IN1/IN2 (AD7091R): x = sat18(((code - OFFSET) * GAIN) >> 16) */
+#define ADC_OFFSET(i)      PERIPH_ADDR(10, 0x00 + 8u * (i))
+#define ADC_GAIN(i)        PERIPH_ADDR(10, 0x04 + 8u * (i))
+#define ADC_RAW(i)         PERIPH_ADDR(10, 0x10 + 4u * (i))
+#define ADC_IN(i)          PERIPH_ADDR(10, 0x18 + 4u * (i))
+#define ADC_COUNT          PERIPH_ADDR(10, 0x20)
+
+/* signal bus, slots and output mixer (Q2.16, 1.0 = machine unit = 65536):
+ * OUT = softclip(sum GAIN_i * S_i + OUT_DC), OUT2 = softclip(S[OUT2_SEL] * OUT2_GAIN + OUT2_DC) */
 #define AUDIO_OUT_L        REG32(AUDIO_BASE + 0x00)
 #define AUDIO_OUT_R        REG32(AUDIO_BASE + 0x04)
+#define BUS_OUT_DC         (AUDIO_BASE + 0x00)
+#define BUS_OUT2_DC        (AUDIO_BASE + 0x04)
+#define BUS_OUT2_SEL       (AUDIO_BASE + 0x08)
+#define BUS_OUT2_GAIN      (AUDIO_BASE + 0x0C)
+#define BUS_GAIN(i)        (AUDIO_BASE + 0x40 + 4u * (i))
+#define BUS_VALUE(i)       (AUDIO_BASE + 0x100 + 4u * (i))
+enum { BUS_SYNTH, BUS_IN1, BUS_IN2, BUS_LFO1, BUS_LFO2, BUS_SYNC, BUS_ENV, BUS_GATE, BUS_SLOT0 };
+#define SLOT_REG(k, off)   (SLOT_BASE + 0x100u * (k) + (off))
+#define SL_TYPE            0x00u
+#define SL_SEL_A           0x04u
+#define SL_SEL_B           0x08u
+#define SL_BYPASS          0x0Cu
+#define SL_MEM_BASE        0x10u
+#define SL_MEM_SIZE        0x14u
+#define SL_PARAM(j)        (0x40u + 4u * (j))
+enum { SLOT_NONE, SLOT_MATH };
+enum { MATH_MUL, MATH_DIV, MATH_ABS, MATH_ADD, MATH_SUB, MATH_MIN, MATH_MAX, MATH_MOD, MATH_AXPB };
 #define Q16_ONE            65536
 
 static inline uint32_t cycles(void) { return TIMER_CYCLES_LO; }

@@ -41,6 +41,7 @@ extern const int ui_num_pages;
 void ui_init(struct ui *u, struct synth *s);
 void ui_update(struct ui *u, const struct ui_input *in, uint32_t now_ms);
 void ui_status(struct ui *u, const char *text);
+#define UI_POLL_GLYPHS 2 /* cells drawn per ui_poll call at most */
 void ui_poll(struct ui *u);                             /* draw changed cells, never waits */
 void ui_row_text(const struct ui *u, int r, char *buf, int n); /* UTF-8 text of a row */
 /* parameter change for one encoder detent (multiplicative for Hz / ms / Q) */

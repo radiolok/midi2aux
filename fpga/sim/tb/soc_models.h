@@ -374,3 +374,58 @@ struct St7789 {
         fclose(f);
     }
 };
+
+// Analog source for the AVK inputs, volts vs time: "off", "dc:V", "sine:F:A[:DC]", "square:F:A[:DC]",
+// "saw:F:A[:DC]" (F in Hz, A amplitude in volts).
+struct AnalogSource {
+    enum Kind { DC, SINE, SQUARE, SAW } kind = DC;
+    double f = 0, a = 0, dc = 0;
+
+    bool parse(const std::string& spec) {
+        char name[16] = {0};
+        double v[3] = {0, 0, 0};
+        int n = sscanf(spec.c_str(), "%15[a-z]:%lf:%lf:%lf", name, &v[0], &v[1], &v[2]);
+        std::string k = name;
+        if (k == "off" && n >= 1) *this = AnalogSource();
+        else if (k == "dc" && n == 2) *this = AnalogSource{DC, 0, 0, v[0]};
+        else if ((k == "sine" || k == "square" || k == "saw") && n >= 3)
+            *this = AnalogSource{k == "sine" ? SINE : k == "square" ? SQUARE : SAW, v[0], v[1], n == 4 ? v[2] : 0};
+        else return false;
+        return true;
+    }
+    double volts(double t) const {
+        double ph = f * t - std::floor(f * t);
+        switch (kind) {
+            case SINE: return dc + a * std::sin(2 * M_PI * ph);
+            case SQUARE: return dc + (ph < 0.5 ? a : -a);
+            case SAW: return dc + a * (2 * ph - 1);
+            default: return dc;
+        }
+    }
+};
+
+// Two AD7091R (IN1, IN2) behind an ideal front end: -12.5..+12.5 V -> 0..4095. The input is
+// sampled on the CONVST falling edge; MSB on SDO after the CS fall, next bits after SCLK falls.
+struct Ad7091rPair {
+    AnalogSource src[2];
+    int code[2] = {2048, 2048}, sdo[2] = {0, 0};
+    int prev_convst = 1, prev_cs = 1, prev_sclk = 0, bit = 11;
+    uint64_t conversions = 0;
+
+    static int to_code(double v) {
+        double c = std::floor((v + 12.5) / 25.0 * 4096);
+        return c < 0 ? 0 : c > 4095 ? 4095 : (int)c;
+    }
+    void step(double t, int convst_n, int cs_n, int sclk) {
+        if (prev_convst && !convst_n) {
+            for (int i = 0; i < 2; ++i) code[i] = to_code(src[i].volts(t));
+            ++conversions;
+        }
+        if (prev_cs && !cs_n) bit = 11;
+        else if (!cs_n && prev_sclk && !sclk && bit > 0) --bit;
+        for (int i = 0; i < 2; ++i) sdo[i] = cs_n ? 0 : (code[i] >> bit) & 1;
+        prev_convst = convst_n;
+        prev_cs = cs_n;
+        prev_sclk = sclk;
+    }
+};

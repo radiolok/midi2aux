@@ -6,15 +6,11 @@
 #include "../fw/params.c"
 #include "../fw/patch.c"
 #include "../fw/synth.c"
+#include "../fw/avk.c"
 #include "../fw/voice_alloc.c"
 #include "../lib/xprintf.c"
 
-/* fake register space: 0x2000_0000 voices, +0x1_0000 globals, +0x2_0000 modulation;
- * peripherals (0x1000_0xxx) land in the fourth window */
-static uint32_t regs[4 * 16384];
-static uint32_t idx(uint32_t a) { return (a >> 28 == 1 ? 3u : (a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
-void hw_write(uint32_t a, uint32_t v) { regs[idx(a)] = v; }
-uint32_t hw_read(uint32_t a) { return regs[idx(a)]; }
+#include "fake_regs.h"
 void uart_putc(char c) { (void)c; }
 void ui_row_text(const struct ui *u, int r, char *b, int n) /* no UI in this test */
 {
@@ -83,6 +79,29 @@ static void test_route_and_notes(void)
     CHECK(strstr(out, "master = 25 (25 %)") != 0);
 }
 
+static void test_avk(void)
+{
+    synth_init(&s, 4, FS);
+    console_init(&s, 0);
+    regs[idx(ADC_RAW(0))] = 2100;
+    regs[idx(ADC_IN(0))] = 2080;
+    regs[idx(PERIPH_ADDR(9, 0x04))] = 198000; /* 500 Hz */
+    regs[idx(PERIPH_ADDR(9, 0x08))] = 7;
+    feed("avk\n");
+    CHECK_STR(out, "in1 raw 2100 val 2080 in2 raw 0 val 0 sync 500.00 Hz edges 7\nbus 0 0 0 0 0 0 0 0\n");
+    feed("cal 1 zero\n");
+    CHECK_STR(out, "ok cal in1 offset 2100 gain 0\n");
+    regs[idx(ADC_RAW(0))] = 2100 + 1000;
+    feed("cal 1 5000\n");
+    CHECK(!strncmp(out, "ok cal in1 offset 2100 gain ", 28));
+    CHECK_EQ(hw_read(ADC_GAIN(0)), (uint32_t)((5000ll << 32) / 10000000));
+    regs[idx(ADC_RAW(0))] = 2100;
+    feed("cal 1 5000\n");
+    CHECK(strstr(out, "error") != 0);
+    feed("cal 3 zero\n");
+    CHECK(strstr(out, "error") != 0);
+}
+
 static void test_long_line_truncated(void)
 {
     console_init(&s, 0);
@@ -94,6 +113,7 @@ static void test_long_line_truncated(void)
 
 int main(void)
 {
+    RUN(test_avk);
     RUN(test_set_get);
     RUN(test_route_and_notes);
     RUN(test_long_line_truncated);

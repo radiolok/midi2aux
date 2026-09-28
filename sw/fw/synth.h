@@ -10,6 +10,7 @@
 #include "voice_alloc.h"
 
 #define MOD_ROUTES 8
+#define AVK_MAX_SLOTS 2 /* slots the patch can configure (P_SLOT1_*, P_SLOT2_*) */
 struct mod_route {
     uint8_t src, via, dst;
     int32_t depth; /* raw register value: pitch units (PM/CM) or Q16 (AM/PW) */
@@ -25,6 +26,10 @@ struct synth {
     uint8_t mod_wheel;
     int16_t bend;
     struct mod_route routes[MOD_ROUTES];
+    int nslots;                    /* effect slots in the hardware */
+    uint8_t slot_type[AVK_MAX_SLOTS];
+    uint32_t sync_edges;           /* last seen SYNC edge count */
+    int sync_note;                 /* note held by SYNC_NOTE mode, -1 none */
 };
 
 void hw_write(uint32_t addr, uint32_t val);
@@ -38,5 +43,17 @@ int synth_midi(struct synth *s, uint8_t st, uint8_t d1, uint8_t d2);
 void synth_all_off(struct synth *s);
 /* route 0 is the vibrato route (LFO1 x mod wheel -> pitch), routes 1..7 are free */
 void synth_set_route(struct synth *s, int k, struct mod_route r);
+
+/* AVK link (avk.c): bus, slots, OUT2, SYNC, input calibration */
+void avk_init(struct synth *s);
+void avk_apply(struct synth *s);
+/* call from the main loop: SYNC edges -> notes in SYNC_NOTE mode; returns 1 on a new edge */
+int avk_poll(struct synth *s);
+/* input i (0, 1): the current input is 0 V -> OFFSET = current code */
+void avk_cal_zero(int i);
+/* the current input is mv millivolts -> GAIN; returns 0 if the code equals the offset */
+int avk_cal_ref(int i, int32_t mv);
+/* SYNC frequency in 0.01 Hz, 0 if unknown */
+uint32_t avk_sync_hz100(const struct synth *s);
 
 #endif

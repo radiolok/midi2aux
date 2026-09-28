@@ -57,7 +57,8 @@ luts:
 plots: sim refs
 	cp $(BUILD)/sim/stub_core/stub_core.png $(BUILD)/sim/mono_core/mono_core.png \
 		$(BUILD)/sim/synth_voices/synth_voices.png $(BUILD)/sim/synth_vibrato/synth_vibrato.png \
-		$(BUILD)/sim/synth_fenv/synth_fenv.png $(BUILD)/sim/panel/panel_lcd.png fpga/sim/img/
+		$(BUILD)/sim/synth_fenv/synth_fenv.png $(BUILD)/sim/panel/panel_lcd.png \
+		$(BUILD)/sim/avk_ringmod/avk_ringmod.png $(BUILD)/sim/avk_fm_gate/avk_fm_gate.png fpga/sim/img/
 	cp $(BUILD)/model/models.png fpga/model/img/
 
 # ------------------------------------------------------------ RISC-V firmware

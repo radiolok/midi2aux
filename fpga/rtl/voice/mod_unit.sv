@@ -29,7 +29,8 @@ module mod_unit (
     output logic signed [17:0] am,
     output logic signed [16:0] pw,
     output logic signed [17:0] lfo1,
-    output logic signed [17:0] lfo2
+    output logic signed [17:0] lfo2,
+    output logic               gate_out   // GATE register (any key held), for the signal bus
 );
 
     localparam logic signed [17:0] ONE = 18'sd65536;
@@ -231,6 +232,8 @@ module mod_unit (
             endcase
         end
     end
+
+    assign gate_out = gate;
 
     wire unused = &{1'b0, wdata[31:24], addr[1:0], acc[0]};
 

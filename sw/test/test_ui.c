@@ -8,14 +8,12 @@
 #include "../fw/params.c"
 #include "../fw/patch.c"
 #include "../fw/synth.c"
+#include "../fw/avk.c"
 #include "../fw/ui.c"
 #include "../fw/voice_alloc.c"
 #include "../lib/xprintf.c"
 
-static uint32_t regs[3 * 16384];
-static uint32_t idx(uint32_t a) { return ((a >> 16) & 3) * 16384 + ((a & 0xFFFF) >> 2); }
-void hw_write(uint32_t a, uint32_t v) { regs[idx(a)] = v; }
-uint32_t hw_read(uint32_t a) { return regs[idx(a)]; }
+#include "fake_regs.h"
 void uart_putc(char c) { (void)c; }
 
 static struct synth s;
@@ -41,10 +39,22 @@ int disp_glyph(int x, int y, uint32_t cp, uint16_t fg, uint16_t bg)
     return 1;
 }
 
+/* main loop passes until nothing more can be drawn; each pass draws <= UI_POLL_GLYPHS cells */
+static void poll_all(void)
+{
+    int left;
+    do {
+        left = u.ndirty;
+        int calls = glyph_calls;
+        ui_poll(&u);
+        CHECK(glyph_calls - calls <= UI_POLL_GLYPHS + 1);
+    } while (u.ndirty && u.ndirty != left);
+}
+
 static void update(uint32_t ms)
 {
     ui_update(&u, &in, ms);
-    ui_poll(&u);
+    poll_all();
 }
 
 static char rowbuf[UI_COLS * 3 + 1];
@@ -86,7 +96,7 @@ static void setup(void)
 static void test_first_page(void)
 {
     setup();
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/8 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/13 >");
     CHECK_STR(row(2), "1 ГЕН1 форма               saw");
     CHECK_STR(row(4), "2 ГЕН2 форма               saw");
     CHECK_STR(row(6), "3 ГЕН2 расстр.            7 ct");
@@ -102,14 +112,14 @@ static void test_page_navigation(void)
     setup();
     in.enc[ENC_MENU] = 3;
     update(10);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/8 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/13 >");
     in.enc[ENC_MENU] = -1; /* 4 back: wraps to the last page */
     update(20);
-    CHECK_STR(row(0), "< ОБЩЕЕ  8/8 >");
+    CHECK_STR(row(0), "< СЛОТЫ: k, FX MIX  13/13 >");
     in.pressed = 1; /* MENU button: first page */
     update(30);
     in.pressed = 0;
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/8 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/13 >");
 }
 
 static void test_edit_parameters(void)
@@ -138,11 +148,11 @@ static void test_drawing_resumes_when_fifo_frees(void)
     update(10);
     CHECK_EQ(glyph_calls >= 5, 1);
     CHECK(u.ndirty > 0);
-    CHECK(strcmp(row(0), "< ФИЛЬТР  4/8 >") != 0); /* not finished yet */
+    CHECK(strcmp(row(0), "< ФИЛЬТР  4/13 >") != 0); /* not finished yet */
     fifo_room = 1 << 30;
-    ui_poll(&u);
+    poll_all();
     CHECK_EQ(u.ndirty, 0);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/8 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/13 >");
 }
 
 static void test_steps(void)

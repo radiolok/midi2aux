@@ -5,6 +5,10 @@
 static const char *const wave_names[] = {"saw", "square", "tri", "sine", 0};
 static const char *const fmode_names[] = {"lp", "bp", "hp", 0};
 static const char *const lfo_names[] = {"sine", "tri", "saw", "square", "random", "sawdn", 0};
+static const char *const bus_names[] = {"synth", "in1", "in2", "lfo1", "lfo2", "sync", "env", "gate",
+                                        "slot1", "slot2", 0};
+static const char *const op_names[] = {"off", "mul", "div", "abs", "add", "sub", "min", "max", "mod", "axpb", 0};
+static const char *const sync_names[] = {"off", "lfo", "note", 0};
 
 const struct param_desc param_table[P_COUNT] = {
     [P_WAVE1]     = {"wave1", "ГЕН1 форма", 0, 3, 0, U_ENUM, wave_names},
@@ -37,6 +41,20 @@ const struct param_desc param_table[P_COUNT] = {
     [P_BEND]      = {"bend", "Диап. bend", 0, 24, 2, U_SEMI, 0},
     [P_MASTER]    = {"master", "Уровень", 0, 200, 25, U_PCT, 0},
     [P_FX_MIX]    = {"fxmix", "FX MIX", 0, 100, 50, U_PCT, 0},
+    [P_IN1_MIX]   = {"in1mix", "ВХ1 → ВЫХ", -200, 200, 0, U_PCT, 0},
+    [P_IN2_MIX]   = {"in2mix", "ВХ2 → ВЫХ", -200, 200, 0, U_PCT, 0},
+    [P_OUT2_SRC]  = {"out2src", "ВЫХ2 сигнал", 0, 9, 3, U_ENUM, bus_names},
+    [P_OUT2_GAIN] = {"out2gain", "ВЫХ2 уровень", -200, 200, 100, U_PCT, 0},
+    [P_SYNC_MODE] = {"syncmode", "SYNC режим", 0, 2, 0, U_ENUM, sync_names},
+    [P_SYNC_NOTE] = {"syncnote", "SYNC нота", 0, 127, 60, U_NONE, 0},
+    [P_SLOT1_OP]  = {"slot1op", "СЛОТ1 операция", 0, 9, 0, U_ENUM, op_names},
+    [P_SLOT1_A]   = {"slot1a", "СЛОТ1 A", 0, 9, 1, U_ENUM, bus_names},
+    [P_SLOT1_B]   = {"slot1b", "СЛОТ1 B", 0, 9, 2, U_ENUM, bus_names},
+    [P_SLOT1_K]   = {"slot1k", "СЛОТ1 k", -200, 200, 100, U_PCT, 0},
+    [P_SLOT2_OP]  = {"slot2op", "СЛОТ2 операция", 0, 9, 0, U_ENUM, op_names},
+    [P_SLOT2_A]   = {"slot2a", "СЛОТ2 A", 0, 9, 1, U_ENUM, bus_names},
+    [P_SLOT2_B]   = {"slot2b", "СЛОТ2 B", 0, 9, 2, U_ENUM, bus_names},
+    [P_SLOT2_K]   = {"slot2k", "СЛОТ2 k", -200, 200, 100, U_PCT, 0},
 };
 
 void patch_defaults(struct patch *p)

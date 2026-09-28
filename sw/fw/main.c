@@ -24,13 +24,13 @@ static void poll_uart(void)
 {
     static int k;
     static const char magic[4] = {'A', 'V', 'K', 'B'};
-    int c = uart_getc_nb();
-    if (c < 0)
-        return;
-    k = (c == magic[k]) ? k + 1 : (c == magic[0]);
-    if (k == 4)
-        enter_loader();
-    console_feed((char)c);
+    int c;
+    while ((c = uart_getc_nb()) >= 0) { /* drain: the RX FIFO is short */
+        k = (c == magic[k]) ? k + 1 : (c == magic[0]);
+        if (k == 4)
+            enter_loader();
+        console_feed((char)c);
+    }
 }
 
 static void handle_event(uint32_t ev)
@@ -92,6 +92,7 @@ int main(void)
             log_printf("midi: overflow\n");
             MIDI_CTRL = 1;
         }
+        avk_poll(&synth);
         log_poll();
         ui_poll(&ui);
         poll_uart();

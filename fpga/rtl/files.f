@@ -26,6 +26,11 @@ soc/periph_midi.sv
 panel/periph_pots.sv
 panel/periph_enc.sv
 panel/lcd_ctrl.sv
+avk/fir_rom.sv
+avk/adc_in.sv
+avk/sync_in.sv
+avk/slot_math.sv
+avk/fx_bus.sv
 stub_core.sv
 mono_core.sv
 synth_core.sv

@@ -26,6 +26,11 @@ static const struct page pages[] = {
     {"ADSR2, LFO1", {P_R2, P_LFO1_RATE, P_LFO1_WAVE}},
     {"LFO2, ВИБРАТО", {P_LFO2_RATE, P_LFO2_WAVE, P_VIBRATO}},
     {"ОБЩЕЕ", {P_BEND, P_MASTER, P_FX_MIX}},
+    {"АВК: ВХОДЫ, SYNC", {P_IN1_MIX, P_IN2_MIX, P_SYNC_MODE}},
+    {"АВК: ВЫХОД 2", {P_OUT2_SRC, P_OUT2_GAIN, P_SYNC_NOTE}},
+    {"СЛОТ 1", {P_SLOT1_OP, P_SLOT1_A, P_SLOT1_B}},
+    {"СЛОТ 2", {P_SLOT2_OP, P_SLOT2_A, P_SLOT2_B}},
+    {"СЛОТЫ: k, FX MIX", {P_SLOT1_K, P_SLOT2_K, P_FX_MIX}},
 };
 const int ui_num_pages = sizeof pages / sizeof pages[0];
 
@@ -111,6 +116,7 @@ static void set_row(struct ui *u, int r, const char *text, uint8_t colours)
 
 void ui_poll(struct ui *u)
 {
+    int budget = UI_POLL_GLYPHS; /* keeps one main loop pass short (UART RX, MIDI latency) */
     for (int r = 0; r < UI_ROWS && u->ndirty; r++)
         for (int c = 0; c < UI_COLS; c++) {
             struct ui_cell *e = &u->cell[r][c];
@@ -120,6 +126,8 @@ void ui_poll(struct ui *u)
                 return; /* no room: continue on the next call */
             e->dirty = 0;
             u->ndirty--;
+            if (!--budget)
+                return;
         }
 }
 

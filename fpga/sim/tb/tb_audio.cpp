@@ -5,6 +5,8 @@
 //   -DSOC         CPU core (synth_core): debug UART monitor + scripted host, SPI flash model,
 //                 trap check; options --uart-out --uart-script --stop-on --flash-image
 //                 --flash-dump; panel models (MCP3208, encoders, ST7789 --lcd-dump);
+//                 AVK inputs: --in1/--in2 SPEC (AD7091R pair), --sync SPEC (comparator > 0 V),
+//                 SPEC = off | dc:V | sine:F:A[:DC] | square:F:A[:DC] | saw:F:A[:DC];
 //                 UART_BAUD must be defined
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
@@ -199,6 +201,7 @@ int main(int argc, char** argv) {
     double duration = 0.3;
     std::string midi_path, wav_path = "stub.wav", json_path = "stub.json";
     std::string uart_out, uart_script, stop_on, flash_image, flash_dump, lcd_dump;
+    std::string in_spec[2] = {"off", "off"}, sync_spec = "off";
     uint32_t flash_image_off = 0, flash_dump_off = 0, flash_dump_len = 0;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -217,6 +220,9 @@ int main(int argc, char** argv) {
         else if (a == "--uart-script") uart_script = next();
         else if (a == "--stop-on") stop_on = next();
         else if (a == "--lcd-dump") lcd_dump = next();
+        else if (a == "--in1") in_spec[0] = next();
+        else if (a == "--in2") in_spec[1] = next();
+        else if (a == "--sync") sync_spec = next();
         else if (a == "--flash-image") {  // path@offset
             std::string v = next();
             size_t at = v.find('@');
@@ -261,6 +267,17 @@ int main(int argc, char** argv) {
     Mcp3208 pots;
     Encoders enc;
     St7789 lcd;
+    Ad7091rPair adc;
+    AnalogSource sync_src;
+    for (int i = 0; i < 2; ++i)
+        if (!adc.src[i].parse(in_spec[i])) {
+            fprintf(stderr, "bad --in%d %s\n", i + 1, in_spec[i].c_str());
+            return 2;
+        }
+    if (!sync_src.parse(sync_spec)) {
+        fprintf(stderr, "bad --sync %s\n", sync_spec.c_str());
+        return 2;
+    }
     uint64_t now = 0;
     host.ext = [&](const std::string& op, const std::string& arg, uint64_t) {
         int k = 0, v = 0;
@@ -272,6 +289,8 @@ int main(int argc, char** argv) {
             enc.turn(k, v);
             return true;
         }
+        if (op == "in1" || op == "in2") return adc.src[op[2] - '1'].parse(arg);
+        if (op == "sync") return sync_src.parse(arg);
         if (op == "btn" && sscanf(arg.c_str(), "%d", &k) == 1 && k >= 0 && k < 4) {
             enc.press(k, now);
             return true;
@@ -284,6 +303,8 @@ int main(int argc, char** argv) {
     top->flash_miso = 1;
     top->pot_miso = 1;
     top->enc_a = top->enc_b = top->enc_sw = 0xF;
+    top->adc_sdo1 = top->adc_sdo2 = 0;
+    top->sync_in = 0;
 #endif
 
     top->rst = 1;
@@ -304,6 +325,11 @@ int main(int argc, char** argv) {
         top->enc_b = enc.b;
         top->enc_sw = enc.sw();
         lcd.step(top->lcd_sck, top->lcd_mosi, top->lcd_cs_n, top->lcd_dc);
+        const double t_s = (double)cyc / SYS_CLK_HZ;
+        adc.step(t_s, top->adc_convst_n, top->adc_cs_n, top->adc_sclk);
+        top->adc_sdo1 = adc.sdo[0];
+        top->adc_sdo2 = adc.sdo[1];
+        top->sync_in = sync_src.volts(t_s) > 0;
 #endif
         top->clk = 1;
         top->eval();

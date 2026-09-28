@@ -39,12 +39,12 @@ def test_menu_encoders_and_knobs():
     r = vsys.run(core(), "panel", 0.3, uart_script=script, stop_on="screen end", lcd_dump=dump)
     log = r.uart
     blocks = log.split("screen 0 ")
-    assert "|< ГЕНЕРАТОРЫ  1/8 >" in blocks[1]
-    assert "|< ФИЛЬТР  4/8 >" in blocks[2]
+    assert "|< ГЕНЕРАТОРЫ  1/13 >" in blocks[1]
+    assert "|< ФИЛЬТР  4/13 >" in blocks[2]
     assert "fmode = 1 (bp)" in log
     assert "cutoff = 16000 (16000 Hz)" in log
     grid = check_screen(r, dump, r.out_dir / "panel_lcd.png")
-    assert grid[0].startswith("< ФИЛЬТР  4/8 >")
+    assert grid[0].startswith("< ФИЛЬТР  4/13 >")
     assert grid[2].startswith("1 Фильтр") and grid[2].rstrip().endswith("bp")
     assert grid[6].rstrip().endswith("2304 ct")
     assert grid[7].startswith("Срез: 16000 Hz")
@@ -56,6 +56,6 @@ def test_menu_button_returns_to_first_page():
               "btn 0", "delay 40", "sendline screen", "wait screen end"]
     r = vsys.run(core(), "panel_btn", 0.2, uart_script=script, stop_on="screen end", lcd_dump=dump)
     blocks = r.uart.split("screen 0 ")
-    assert "|< ОБЩЕЕ  8/8 >" in blocks[1]
-    assert "|< ГЕНЕРАТОРЫ  1/8 >" in blocks[2]
+    assert "|< СЛОТЫ: k, FX MIX  13/13 >" in blocks[1]
+    assert "|< ГЕНЕРАТОРЫ  1/13 >" in blocks[2]
     check_screen(r, dump, r.out_dir / "panel_btn_lcd.png")

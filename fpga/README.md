@@ -18,6 +18,9 @@ fpga/
     midi/              uart_rx, uart_tx, midi_parser
     common/            sync_fifo
     soc/               шина PicoRV32: RAM, boot ROM (генерируется: make bootrom), периферия, SPI
+    voice/             voice_engine (голоса с разделением по времени), mod_unit (LFO, матрица)
+    panel/             ручки (MCP3208), энкодеры, контроллер ST7789
+    avk/               связь с АВК: АЦП ВХ1/ВХ2 + дециматор, СИНХР, шина сигналов, слоты (MATH)
     third_party/       PicoRV32 (ISC), без изменений
     mono_core.sv       ядро этапа 1 (один голос, без процессора)
     synth_core.sv      ядро с этапа 2 (PicoRV32 + звуковой тракт)
@@ -89,7 +92,8 @@ All Notes Off и Stop, задержка MIDI → звук ≤ 3 мс.
 
 Юнит-тесты (`unit/`): `uart_rx` (рассогласование скорости ±3 %, ошибка стопа, помеха), `sync_fifo`,
 `midi_parser` (случайные потоки против `synthmodel.midi`), `pitch2inc` (побитово с `synthmodel.pitch`,
-точность < 0.02 цента), `dac_scale`.
+точность < 0.02 цента), `dac_scale`; далее — голоса, модуляция, панель, блоки `avk/` (подробно по этапам —
+в [`sim/README.md`](sim/README.md)).
 
 ### Формат стимулов MIDI
 

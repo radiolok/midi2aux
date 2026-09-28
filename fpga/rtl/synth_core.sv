@@ -5,11 +5,10 @@
 //   0x0010_0000  boot ROM (reset vector by default)
 //   0x1000_0000  peripherals, 0x100 per block:
 //                0 UART  1 TIMER  2 GPIO  3 MIDI  4 SYSINFO  5 SPI flash
-//                6 POTS (MCP3208)  7 ENC (encoders)  8 LCD (ST7789)
+//                6 POTS (MCP3208)  7 ENC (encoders)  8 LCD (ST7789)  9 SYNC  10 ADC (IN1/IN2)
 //   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
 //   0x2002_0000  modulation unit (voice/mod_unit.sv): LFOs, modulation matrix
-//   0x3000_0000  audio output: 0x00 OUT (L), 0x04 OUT2 (R) DC offsets, Q2.16 (1.0 = МЕ)
-// OUT = softclip(voices + DC_L), OUT2 = softclip(DC_R).
+//   0x3000_0000  signal bus, output mixer, slots (avk/fx_bus.sv): OUT (L), OUT2 (R)
 // Unmapped accesses complete with zero data.
 `default_nettype none
 
@@ -25,7 +24,9 @@ module synth_core #(
     parameter logic [31:0] FW_FLASH_OFFSET = 32'h0050_0000,
     parameter int          MIDI_BAUD       = 31_250,
     parameter int          NUM_VOICES      = 16,
-    parameter int          SIM_FAST        = 0      // SYSINFO flag: firmware shortens delays
+    parameter int          SIM_FAST        = 0,     // SYSINFO flag: firmware shortens delays
+    parameter int          NUM_SLOTS       = 2,
+    parameter logic [8*NUM_SLOTS-1:0] SLOT_TYPES = {NUM_SLOTS{8'd1}}  // slot k: [8k +: 8]
 ) (
     input  wire        clk,
     input  wire        rst,
@@ -52,6 +53,13 @@ module synth_core #(
     output logic       lcd_dc,
     output logic       lcd_rst_n,
     output logic       lcd_bl,
+    // AVK inputs: 2x AD7091R, SYNC comparator
+    output logic       adc_convst_n,
+    output logic       adc_cs_n,
+    output logic       adc_sclk,
+    input  wire        adc_sdo1,
+    input  wire        adc_sdo2,
+    input  wire        sync_in,
     // DAC
     output logic       i2s_bck,
     output logic       i2s_lrck,
@@ -65,7 +73,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0005_0000;  // stage 5
+    localparam logic [31:0] VERSION = 32'h0006_0000;  // stage 6
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -119,7 +127,7 @@ module synth_core #(
         else if (mem_addr[31:12] == 20'h10000)        sel = SEL_PERIPH;
         else if (mem_addr[31:17] == 15'h1000)         sel = SEL_VOICE;
         else if (mem_addr[31:12] == 20'h20020)        sel = SEL_MOD;
-        else if (mem_addr[31:12] == 20'h30000)        sel = SEL_AUDIO;
+        else if (mem_addr[31:17] == 15'h1800)         sel = SEL_AUDIO;
     end
 
     always_ff @(posedge clk) begin
@@ -221,7 +229,21 @@ module synth_core #(
         .sck(lcd_sck), .mosi(lcd_mosi), .cs_n(lcd_cs_n), .dc(lcd_dc), .rst_n(lcd_rst_n), .bl(lcd_bl)
     );
 
-    for (genvar i = 9; i < 16; i++) begin : g_no_periph
+    logic               sync_level, sync_edge;
+    logic signed [17:0] in1, in2;
+
+    sync_in u_sync (
+        .clk(clk), .rst(rst), .tick(audio_tick), .req(preq[9]), .we(we), .addr(reg_addr), .wdata(mem_wdata),
+        .rdata(prd[9]), .sync_pin(sync_in), .level(sync_level), .edge_tick(sync_edge)
+    );
+
+    adc_in #(.PERIOD(128 * BCK_HALF), .CONV_CYC((SYS_CLK_HZ / 1_000_000) * 7 / 10 + 1)) u_adc (
+        .clk(clk), .rst(rst), .tick(audio_tick), .req(preq[10]), .we(we), .addr(reg_addr), .wdata(mem_wdata),
+        .rdata(prd[10]), .convst_n(adc_convst_n), .cs_n(adc_cs_n), .sclk(adc_sclk),
+        .sdo1(adc_sdo1), .sdo2(adc_sdo2), .in1(in1), .in2(in2)
+    );
+
+    for (genvar i = 11; i < 16; i++) begin : g_no_periph
         assign prd[i] = '0;
     end
 
@@ -237,7 +259,7 @@ module synth_core #(
     // ----------------------------------------------------------------- audio
     logic                     bck_fall_stb;
     logic [5:0]               slot_next;
-    logic signed [DATA_W-1:0] out_l, out_r, clip_l, clip_r, dac_l, dac_r;
+    logic signed [DATA_W-1:0] out_l, out_r, dac_l, dac_r;
     logic signed [19:0]       s0;
     logic                     s0_valid, engine_busy;
 
@@ -249,12 +271,13 @@ module synth_core #(
     logic signed [22:0] mod_pm, mod_cm;
     logic signed [17:0] mod_am, lfo1, lfo2, env_out;
     logic signed [16:0] mod_pw;
+    logic               gate_any;
 
     mod_unit u_mod (
         .clk(clk), .rst(rst), .tick(audio_tick),
         .req(req && sel == SEL_MOD), .we(we), .addr(mem_addr[7:0]), .wdata(mem_wdata), .rdata(mod_q),
-        .in1('0), .in2('0), .sync(1'b0), .sync_edge(1'b0), .env(env_out),
-        .pm(mod_pm), .cm(mod_cm), .am(mod_am), .pw(mod_pw), .lfo1(lfo1), .lfo2(lfo2)
+        .in1(in1), .in2(in2), .sync(sync_level), .sync_edge(sync_edge), .env(env_out),
+        .pm(mod_pm), .cm(mod_cm), .am(mod_am), .pw(mod_pw), .lfo1(lfo1), .lfo2(lfo2), .gate_out(gate_any)
     );
 
     voice_engine #(.NUM_VOICES(NUM_VOICES)) u_voices (
@@ -264,26 +287,17 @@ module synth_core #(
         .s0(s0), .s0_valid(s0_valid), .busy(engine_busy), .env_out(env_out)
     );
 
-    always_ff @(posedge clk) begin
-        if (rst) begin
-            out_l <= '0;
-            out_r <= '0;
-        end else if (req && sel == SEL_AUDIO && we) begin
-            if (reg_addr == 6'd0) out_l <= mem_wdata[DATA_W-1:0];
-            if (reg_addr == 6'd1) out_r <= mem_wdata[DATA_W-1:0];
-        end
-        if (req && sel == SEL_AUDIO && !we)
-            audio_q <= reg_addr == 6'd0 ? 32'(out_l) : reg_addr == 6'd1 ? 32'(out_r) : '0;
-    end
+    wire signed [17:0] synth = s0 > 20'sd131071 ? 18'sd131071 : s0 < -20'sd131072 ? -18'sd131072 : s0[17:0];
 
-    logic signed [20:0] mix_l;
-    assign mix_l = 21'(s0) + 21'(out_l);
+    fx_bus #(.NUM_SLOTS(NUM_SLOTS), .SLOT_TYPES(SLOT_TYPES)) u_bus (
+        .clk(clk), .rst(rst), .tick(audio_tick),
+        .req(req && sel == SEL_AUDIO), .we(we), .addr(mem_addr[16:0]), .wdata(mem_wdata), .rdata(audio_q),
+        .synth(synth), .in1(in1), .in2(in2), .lfo1(lfo1), .lfo2(lfo2), .sync(sync_level), .env(env_out),
+        .gate(gate_any), .out(out_l), .out2(out_r)
+    );
 
-    softclip #(.IN_W(21)) u_clip_l (.clk(clk), .x(mix_l), .y(clip_l));
-    softclip #(.IN_W(21)) u_clip_r (.clk(clk), .x(21'(out_r)), .y(clip_r));
-
-    dac_scale #(.DATA_W(DATA_W)) u_dac_l (.clk(clk), .x(clip_l), .y(dac_l));
-    dac_scale #(.DATA_W(DATA_W)) u_dac_r (.clk(clk), .x(clip_r), .y(dac_r));
+    dac_scale #(.DATA_W(DATA_W)) u_dac_l (.clk(clk), .x(out_l), .y(dac_l));
+    dac_scale #(.DATA_W(DATA_W)) u_dac_r (.clk(clk), .x(out_r), .y(dac_r));
 
     i2s_tx #(.DATA_W(DATA_W)) u_i2s (
         .clk(clk), .rst(rst), .bck_fall_stb(bck_fall_stb), .slot_next(slot_next),
@@ -295,7 +309,7 @@ module synth_core #(
         else     dac_xsmt <= 1'b1;
     end
 
-    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:9], s0_valid, engine_busy, lfo1, lfo2};
+    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:11], s0_valid, engine_busy};
 
 endmodule
 

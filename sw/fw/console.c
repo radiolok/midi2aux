@@ -108,6 +108,25 @@ void console_exec(char *l)
         for (int k = 0; k < 8; k++)
             log_printf(" %u", (unsigned)(hw_read(PERIPH_ADDR(6, 4u * k)) >> 4));
         log_printf("\n");
+    } else if (!strcmp(cmd, "avk")) {
+        uint32_t hz = avk_sync_hz100(syn);
+        for (int i = 0; i < 2; i++)
+            log_printf("in%d raw %u val %d ", i + 1, (unsigned)hw_read(ADC_RAW(i)), (int)hw_read(ADC_IN(i)));
+        log_printf("sync %u.%02u Hz edges %u\nbus", (unsigned)(hz / 100), (unsigned)(hz % 100),
+                   (unsigned)hw_read(PERIPH_ADDR(9, 0x08)));
+        for (int i = 0; i < BUS_SLOT0 + syn->nslots; i++)
+            log_printf(" %d", (int)hw_read(BUS_VALUE(i)));
+        log_printf("\n");
+    } else if (!strcmp(cmd, "cal") && argc == 3 && parse_int(argv[1], &a[0]) && (a[0] == 1 || a[0] == 2)) {
+        int i = (int)a[0] - 1;
+        if (!strcmp(argv[2], "zero")) {
+            avk_cal_zero(i);
+        } else if (!parse_int(argv[2], &a[1]) || !avk_cal_ref(i, a[1])) {
+            log_printf("error: cal <1|2> zero | cal <1|2> <mV> (after zero)\n");
+            return;
+        }
+        log_printf("ok cal in%d offset %u gain %u\n", i + 1, (unsigned)hw_read(ADC_OFFSET(i)),
+                   (unsigned)hw_read(ADC_GAIN(i)));
     } else if (!strcmp(cmd, "screen") && ui) {
         char row[UI_COLS * 3 + 1];
         for (int r = 0; r < UI_ROWS; r++) {
@@ -117,7 +136,7 @@ void console_exec(char *l)
         log_printf("screen end\n");
     } else if (!strcmp(cmd, "help")) {
         log_printf("set <param> <v> | get <param> | list | route <k> <src> <via> <dst> <depth> | "
-                   "note <n> [vel] | off <n> | screen\n");
+                   "note <n> [vel] | off <n> | screen | avk | cal <1|2> zero|<mV>\n");
     } else {
         log_printf("error: unknown command, try help\n");
     }

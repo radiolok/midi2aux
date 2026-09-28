@@ -10,7 +10,7 @@ and yosys, and every synthesiser infers a ROM from it.
 import argparse
 from pathlib import Path
 
-from . import pitch, softclip
+from . import avk, pitch, softclip
 from .nco import quarter_sine_table
 
 RTL_DIR = Path(__file__).resolve().parents[2] / "rtl"
@@ -75,10 +75,19 @@ def tanh_rom_sv() -> str:
          "T[i] = round(tanh(i/128) * 2^16), D[i] = T[i+1] - T[i]. Model: synthmodel/softclip.py."])
 
 
+def fir_rom_sv() -> str:
+    taps = avk.fir_taps()
+    return case_rom_sv(
+        "fir_rom", [t & 0x3FFFF for t in taps], 6, 18,
+        [f"{avk.FIR_TAPS}-tap decimation FIR for the AVK inputs, Q1.17 two's complement.",
+         "Model: synthmodel/avk.py (fir_taps)."])
+
+
 GENERATED = {
     "audio/sine_quarter_rom.sv": lambda: sine_rom_sv(18, 10),
     "audio/exp2_rom.sv": exp_rom_sv,
     "audio/tanh_rom.sv": tanh_rom_sv,
+    "avk/fir_rom.sv": fir_rom_sv,
 }
 
 

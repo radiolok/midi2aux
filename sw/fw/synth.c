@@ -51,10 +51,12 @@ void synth_apply_patch(struct synth *s)
     hw_write(SYNTH_REG(S_AM), 65536);
     hw_write(SYNTH_REG(S_CM), 0);
     hw_write(MOD_REG(M_LFO_INC(0)), lfo_inc(&s->fs, (uint32_t)v[P_LFO1_RATE]));
-    hw_write(MOD_REG(M_LFO_CFG(0)), (uint32_t)v[P_LFO1_WAVE]);
+    uint32_t lfo_sync = v[P_SYNC_MODE] == SYNC_LFO ? 1u << 4 : 0;
+    hw_write(MOD_REG(M_LFO_CFG(0)), (uint32_t)v[P_LFO1_WAVE] | lfo_sync);
     hw_write(MOD_REG(M_LFO_INC(1)), lfo_inc(&s->fs, (uint32_t)v[P_LFO2_RATE]));
-    hw_write(MOD_REG(M_LFO_CFG(1)), (uint32_t)v[P_LFO2_WAVE]);
+    hw_write(MOD_REG(M_LFO_CFG(1)), (uint32_t)v[P_LFO2_WAVE] | lfo_sync);
     synth_set_route(s, 0, (struct mod_route){SRC_LFO1, SRC_MODWHEEL, DST_PM, (int32_t)cents_pitch(v[P_VIBRATO])});
+    avk_apply(s);
 }
 
 void synth_set_param(struct synth *s, int id, int32_t value)
@@ -86,6 +88,7 @@ void synth_init(struct synth *s, int nvoices, struct fs_info fs)
     s->mod_wheel = 0;
     s->bend = 0;
     va_init(&s->va, nvoices, (struct va_hw){va_idle, va_level, 0});
+    avk_init(s);
     for (int v = 0; v < VA_MAX_VOICES; v++)
         s->retrig[v] = 0;
     for (int k = 0; k < MOD_ROUTES; k++)
