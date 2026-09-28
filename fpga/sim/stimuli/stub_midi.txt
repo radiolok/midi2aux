@@ -1,0 +1,11 @@
+# MIDI stimulus for tb_stub_core: "<time_ms> <hex bytes...>", sent at 31250 baud.
+# Stage 0 core only echoes received bytes; the TB compares them with this list.
+1.0    90 45 64        # Note On A4, vel 100, channel 1
+5.0    48 50           # running status: Note On C4
+5.2    F8              # System Realtime (clock) between messages
+10.0   91 3C 00        # Note On vel 0 = Note Off, channel 2
+12.0   B0 01 40        # CC1 mod wheel
+14.0   E0 00 50        # Pitch bend
+20.0   80 45 00        # Note Off A4
+25.0   B0 7B 00        # All Notes Off
+30.0   FC              # Stop
