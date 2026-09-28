@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 128 98" width="1024" height="784" font-family="DejaVu Sans, Arial, sans-serif">
+  <!-- Эскиз лицевой панели FPGA-синтезатора для АВК-6. Единицы: мм. Панель 120x90. -->
+  <rect x="-4" y="-4" width="128" height="98" fill="#ffffff"/>
+  <rect x="0" y="0" width="120" height="90" rx="1.5" fill="#d7dbde" stroke="#555" stroke-width="0.3"/>
+  <!-- крепёжные стойки -->
+  <g fill="#fff" stroke="#555" stroke-width="0.25">
+    <circle cx="4" cy="4" r="1.6"/><circle cx="116" cy="4" r="1.6"/>
+    <circle cx="4" cy="86" r="1.6"/><circle cx="116" cy="86" r="1.6"/>
+  </g>
+
+  <!-- зона потенциометров (MCP3208, 8 каналов) -->
+  <rect x="5" y="6" width="68" height="38" rx="1" fill="none" stroke="#8a9" stroke-width="0.25" stroke-dasharray="1 0.7"/>
+  <g font-size="2.3" text-anchor="middle" fill="#222">
+    <g id="pots">
+      <!-- ряд 1 -->
+      <circle cx="13" cy="14" r="5.5" fill="#333"/><line x1="13" y1="14" x2="13" y2="9.5" stroke="#fff" stroke-width="0.5"/><text x="13" y="22.5">СРЕЗ</text>
+      <circle cx="30" cy="14" r="5.5" fill="#333"/><line x1="30" y1="14" x2="30" y2="9.5" stroke="#fff" stroke-width="0.5"/><text x="30" y="22.5">РЕЗОН.</text>
+      <circle cx="47" cy="14" r="5.5" fill="#333"/><line x1="47" y1="14" x2="47" y2="9.5" stroke="#fff" stroke-width="0.5"/><text x="47" y="22.5">ENV→Ф</text>
+      <circle cx="64" cy="14" r="5.5" fill="#333"/><line x1="64" y1="14" x2="64" y2="9.5" stroke="#fff" stroke-width="0.5"/><text x="64" y="22.5">FX MIX</text>
+      <!-- ряд 2: ADSR -->
+      <circle cx="13" cy="32" r="5.5" fill="#333"/><line x1="13" y1="32" x2="13" y2="27.5" stroke="#fff" stroke-width="0.5"/><text x="13" y="40.5">A</text>
+      <circle cx="30" cy="32" r="5.5" fill="#333"/><line x1="30" y1="32" x2="30" y2="27.5" stroke="#fff" stroke-width="0.5"/><text x="30" y="40.5">D</text>
+      <circle cx="47" cy="32" r="5.5" fill="#333"/><line x1="47" y1="32" x2="47" y2="27.5" stroke="#fff" stroke-width="0.5"/><text x="47" y="40.5">S</text>
+      <circle cx="64" cy="32" r="5.5" fill="#333"/><line x1="64" y1="32" x2="64" y2="27.5" stroke="#fff" stroke-width="0.5"/><text x="64" y="40.5">R</text>
+    </g>
+
+    <!-- громкость (аналоговая, в цепи выходного ОУ) -->
+    <circle cx="97" cy="17" r="8.5" fill="#222"/><line x1="97" y1="17" x2="97" y2="9.5" stroke="#fff" stroke-width="0.6"/>
+    <text x="97" y="29">ГРОМКОСТЬ</text>
+
+    <!-- выход -->
+    <g>
+      <circle cx="90" cy="37" r="2.2" fill="#b08d3c"/><circle cx="90" cy="37" r="0.6" fill="#000"/><text x="90" y="42.5">ВЫХ</text>
+      <circle cx="104" cy="37" r="2.2" fill="#b08d3c"/><circle cx="104" cy="37" r="0.6" fill="#000"/><text x="104" y="42.5">⊥</text>
+    </g>
+
+    <!-- входы АВК: ряд штырей 2РМТ -->
+    <g>
+      <circle cx="11" cy="49" r="2.2" fill="#b08d3c"/><circle cx="11" cy="49" r="0.6" fill="#000"/><text x="11" y="54.3">ВХ1</text>
+      <circle cx="23" cy="49" r="2.2" fill="#b08d3c"/><circle cx="23" cy="49" r="0.6" fill="#000"/><text x="23" y="54.3">ВХ2</text>
+      <circle cx="35" cy="49" r="2.2" fill="#b08d3c"/><circle cx="35" cy="49" r="0.6" fill="#000"/><text x="35" y="54.3">СИНХР</text>
+      <circle cx="47" cy="49" r="2.2" fill="#b08d3c"/><circle cx="47" cy="49" r="0.6" fill="#000"/><text x="47" y="54.3">⊥</text>
+    </g>
+
+    <!-- MIDI TRS 3.5 мм -->
+    <circle cx="106" cy="52" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="106" cy="52" r="1.8" fill="#111"/>
+    <text x="106" y="59.5">MIDI (TRS-A)</text>
+
+    <!-- дисплей 1.14" ST7789 240x135, активная область ~25x15 -->
+    <rect x="5" y="58" width="36" height="26" rx="1" fill="#444"/>
+    <rect x="9" y="62" width="27" height="16" fill="#0b1e2e"/>
+    <g font-size="2.0" text-anchor="start" fill="#7fe0ff" font-family="DejaVu Sans Mono, monospace">
+      <text x="10" y="65.5">FX2: DELAY  IN1</text>
+      <text x="10" y="69">ВРЕМЯ   320мс</text>
+      <text x="10" y="72.5">ОБР.СВ.  45%</text>
+      <text x="10" y="76">СИНХР   ВКЛ</text>
+    </g>
+    <text x="23" y="87.5">1.14" 240×135</text>
+
+    <!-- энкодеры EC11 с кнопкой -->
+    <g>
+      <circle cx="54" cy="73" r="6.3" fill="#555"/><circle cx="54" cy="73" r="1" fill="#ddd"/><text x="54" y="83.5">МЕНЮ</text>
+      <circle cx="70" cy="73" r="6.3" fill="#555"/><circle cx="70" cy="73" r="1" fill="#ddd"/><text x="70" y="83.5">ПАР.1</text>
+      <circle cx="86" cy="73" r="6.3" fill="#555"/><circle cx="86" cy="73" r="1" fill="#ddd"/><text x="86" y="83.5">ПАР.2</text>
+      <circle cx="102" cy="73" r="6.3" fill="#555"/><circle cx="102" cy="73" r="1" fill="#ddd"/><text x="102" y="83.5">ПАР.3</text>
+    </g>
+  </g>
+
+  <!-- размеры -->
+  <g font-size="2.2" fill="#666" text-anchor="middle">
+    <text x="60" y="-1">120 мм</text>
+    <text x="-1.5" y="45" transform="rotate(-90 -1.5 45)">90 мм</text>
+  </g>
+</svg>
