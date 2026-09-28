@@ -127,6 +127,16 @@ void console_exec(char *l)
         }
         log_printf("ok cal in%d offset %u gain %u\n", i + 1, (unsigned)hw_read(ADC_OFFSET(i)),
                    (unsigned)hw_read(ADC_GAIN(i)));
+    } else if (!strcmp(cmd, "mem") && (argc == 2 || argc == 3) && parse_int(argv[1], &a[0])) {
+        uint32_t addr = XRAM_BASE + 4u * (uint32_t)a[0]; /* word index in the external memory */
+        if (argc == 3) {
+            if (!parse_int(argv[2], &a[1])) {
+                log_printf("error: mem <word> [value]\n");
+                return;
+            }
+            hw_write(addr, (uint32_t)a[1]);
+        }
+        log_printf("ok mem %d = %d\n", (int)a[0], (int)hw_read(addr));
     } else if (!strcmp(cmd, "screen") && ui) {
         char row[UI_COLS * 3 + 1];
         for (int r = 0; r < UI_ROWS; r++) {
@@ -136,7 +146,7 @@ void console_exec(char *l)
         log_printf("screen end\n");
     } else if (!strcmp(cmd, "help")) {
         log_printf("set <param> <v> | get <param> | list | route <k> <src> <via> <dst> <depth> | "
-                   "note <n> [vel] | off <n> | screen | avk | cal <1|2> zero|<mV>\n");
+                   "note <n> [vel] | off <n> | screen | avk | cal <1|2> zero|<mV> | mem <word> [value]\n");
     } else {
         log_printf("error: unknown command, try help\n");
     }

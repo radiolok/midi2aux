@@ -429,3 +429,40 @@ struct Ad7091rPair {
         prev_sclk = sclk;
     }
 };
+
+// External memory on the xm_* port (mem/mem_arb.sv protocol): random latency 0..max_lat clocks,
+// one-clock ack. Word addresses wrap at the size.
+struct ExtMemory {
+    std::vector<uint32_t> mem;
+    int max_lat = 3, wait = -1;
+    uint32_t rng = 12345, reads = 0, writes = 0;
+    bool acked = false;
+
+    explicit ExtMemory(size_t words) : mem(words ? words : 1, 0) {}
+    uint32_t rnd() { return rng = rng * 1664525u + 1013904223u; }
+    // called once per clock, before the rising edge; returns {ack, rdata} for that edge
+    void step(int req, int we, uint32_t addr, uint32_t wdata, int be, uint8_t& ack, uint32_t& rdata) {
+        ack = 0;
+        if (acked) {  // the master drops req after the edge that saw ack
+            acked = false;
+            return;
+        }
+        if (wait < 0) {
+            if (!req) return;
+            wait = max_lat ? (int)(rnd() % (uint32_t)(max_lat + 1)) : 0;
+        }
+        if (wait-- > 0) return;
+        wait = -1;
+        uint32_t& w = mem[addr % mem.size()];
+        if (we) {
+            for (int i = 0; i < 4; ++i)
+                if (be >> i & 1) w = (w & ~(0xFFu << (8 * i))) | (wdata & (0xFFu << (8 * i)));
+            ++writes;
+        } else {
+            ++reads;
+        }
+        rdata = w;
+        ack = 1;
+        acked = true;
+    }
+};

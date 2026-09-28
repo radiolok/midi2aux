@@ -31,6 +31,9 @@ static const struct page pages[] = {
     {"СЛОТ 1", {P_SLOT1_OP, P_SLOT1_A, P_SLOT1_B}},
     {"СЛОТ 2", {P_SLOT2_OP, P_SLOT2_A, P_SLOT2_B}},
     {"СЛОТЫ: k, FX MIX", {P_SLOT1_K, P_SLOT2_K, P_FX_MIX}},
+    {"ЗАДЕРЖКА 1", {P_DLY1_SRC, P_DLY1_TIME, P_DLY1_FB}},
+    {"ЗАДЕРЖКА 2", {P_DLY2_SRC, P_DLY2_TIME, P_DLY2_FB}},
+    {"ЗАДЕРЖКИ: УРОВНИ", {P_DLY1_LVL, P_DLY2_LVL, P_DLY_SYNC}},
 };
 const int ui_num_pages = sizeof pages / sizeof pages[0];
 
@@ -45,31 +48,19 @@ static const struct {
 
 int ui_pot_param(int pot) { return pots[pot].param; }
 
-/* 2^x for 0 <= x <= 16, float, no libm: integer part by shifting, fraction by e^(x ln 2) */
-static float exp2f_small(float x)
-{
-    int k = (int)x;
-    float r = 1.0f / fexp_neg((x - (float)k) * 0.693147181f);
-    while (k-- > 0)
-        r *= 2.0f;
-    return r;
-}
-
-static float log2f_ratio(int32_t hi, int32_t lo)
-{
-    /* log2(hi / lo) for hi >= lo > 0 from the 16.16 integer log2 */
-    return ((float)log2_q16((uint64_t)hi << 16) - (float)log2_q16((uint64_t)lo << 16)) / 65536.0f;
-}
-
 int32_t ui_pot_value(int pot, int raw)
 {
     const struct param_desc *d = &param_table[pots[pot].param];
+    const int32_t span = 4095 - 2 * POT_DEAD;
     /* dead zones at both ends: the knob reaches min / max reliably */
-    int r = raw < POT_DEAD ? 0 : raw > 4095 - POT_DEAD ? 4095 - 2 * POT_DEAD : raw - POT_DEAD;
-    float x = (float)r / (float)(4095 - 2 * POT_DEAD);
+    int32_t r = raw < POT_DEAD ? 0 : raw > 4095 - POT_DEAD ? span : raw - POT_DEAD;
     if (pots[pot].curve == LIN)
-        return d->min + (int32_t)((float)(d->max - d->min) * x + 0.5f);
-    return param_clamp(pots[pot].param, (int32_t)((float)d->min * exp2f_small(x * log2f_ratio(d->max, d->min)) + 0.5f));
+        return d->min + (int32_t)(((int64_t)(d->max - d->min) * r + span / 2) / span);
+    /* min * (max / min)^(r / span): exponent in Q16 from the integer log2 */
+    uint32_t l = log2_q16((uint64_t)d->max << 16) - log2_q16((uint64_t)d->min << 16);
+    uint32_t e = (uint32_t)(((uint64_t)l * (uint32_t)r + (uint32_t)span / 2) / (uint32_t)span);
+    uint64_t v = ((uint64_t)d->min * exp2_frac_q30(e) << (e >> 16)) + (1u << 29);
+    return param_clamp(pots[pot].param, (int32_t)(v >> 30));
 }
 
 int32_t ui_step(int id, int32_t v, int dir)

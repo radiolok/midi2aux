@@ -30,6 +30,12 @@ avk/fir_rom.sv
 avk/adc_in.sv
 avk/sync_in.sv
 avk/slot_math.sv
+avk/slot_delay.sv
+avk/slot_chorus.sv
+avk/slot_reverb.sv
+mem/mem_arb.sv
+mem/mem_bram.sv
+mem/sdram_ctrl.sv
 avk/fx_bus.sv
 stub_core.sv
 mono_core.sv

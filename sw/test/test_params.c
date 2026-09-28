@@ -45,10 +45,25 @@ static void test_notes_and_cents(void)
     CHECK_EQ((int32_t)cents_pitch(-1200), -65536);
 }
 
-static void test_fexp(void)
+static void test_exp2(void)
 {
-    for (float x = 0.0f; x < 60.0f; x += 0.013f)
-        CHECK(fabs(fexp_neg(x) - exp(-x)) <= 1e-6 * exp(-x) + 1e-30); /* float precision */
+    for (uint32_t f = 0; f < 65536; f += 7)
+        CHECK(fabs(exp2_frac_q30(f) / 1073741824.0 - exp2(f / 65536.0)) < 1e-8); /* ~10 LSB of Q30 */
+}
+
+static void test_env_coef_range(void)
+{
+    /* every time of the parameter range: within 2 mantissa LSB of the exact value */
+    for (uint32_t ms = 1; ms <= 10000; ms += ms < 100 ? 1 : 37)
+        for (int att = 0; att < 2; att++) {
+            double fs = 99e6 / (128.0 * 16), ratio = att ? -log(1 - 1 / 1.3) : log(1000.0);
+            double c = 1 - exp(-ratio / (ms * 1e-3 * fs));
+            int shift = (int)ceil(2 - log2(c));
+            double mant = c * pow(2, 14 + shift);
+            uint32_t v = env_coef(&FS, ms * 1000u, att);
+            CHECK_EQ(v >> 17, (uint32_t)shift);
+            CHECK(fabs((v & 0x1FFFF) - mant) <= 1.5);
+        }
 }
 
 static void test_res_and_velocity(void)
@@ -65,7 +80,8 @@ int main(void)
     RUN(test_against_python_model);
     RUN(test_log2);
     RUN(test_notes_and_cents);
-    RUN(test_fexp);
+    RUN(test_exp2);
+    RUN(test_env_coef_range);
     RUN(test_res_and_velocity);
     return TEST_RESULT();
 }

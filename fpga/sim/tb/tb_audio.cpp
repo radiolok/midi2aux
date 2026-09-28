@@ -7,6 +7,7 @@
 //                 --flash-dump; panel models (MCP3208, encoders, ST7789 --lcd-dump);
 //                 AVK inputs: --in1/--in2 SPEC (AD7091R pair), --sync SPEC (comparator > 0 V),
 //                 SPEC = off | dc:V | sine:F:A[:DC] | square:F:A[:DC] | saw:F:A[:DC];
+//                 external memory model on xm_*: --xmem-words N (default 65536), --xmem-latency N;
 //                 UART_BAUD must be defined
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
@@ -202,6 +203,8 @@ int main(int argc, char** argv) {
     std::string midi_path, wav_path = "stub.wav", json_path = "stub.json";
     std::string uart_out, uart_script, stop_on, flash_image, flash_dump, lcd_dump;
     std::string in_spec[2] = {"off", "off"}, sync_spec = "off";
+    size_t xmem_words = 65536;
+    int xmem_latency = 3;
     uint32_t flash_image_off = 0, flash_dump_off = 0, flash_dump_len = 0;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -223,6 +226,8 @@ int main(int argc, char** argv) {
         else if (a == "--in1") in_spec[0] = next();
         else if (a == "--in2") in_spec[1] = next();
         else if (a == "--sync") sync_spec = next();
+        else if (a == "--xmem-words") xmem_words = strtoul(next().c_str(), nullptr, 0);
+        else if (a == "--xmem-latency") xmem_latency = atoi(next().c_str());
         else if (a == "--flash-image") {  // path@offset
             std::string v = next();
             size_t at = v.find('@');
@@ -269,6 +274,8 @@ int main(int argc, char** argv) {
     St7789 lcd;
     Ad7091rPair adc;
     AnalogSource sync_src;
+    ExtMemory xmem(xmem_words);
+    xmem.max_lat = xmem_latency;
     for (int i = 0; i < 2; ++i)
         if (!adc.src[i].parse(in_spec[i])) {
             fprintf(stderr, "bad --in%d %s\n", i + 1, in_spec[i].c_str());
@@ -305,6 +312,8 @@ int main(int argc, char** argv) {
     top->enc_a = top->enc_b = top->enc_sw = 0xF;
     top->adc_sdo1 = top->adc_sdo2 = 0;
     top->sync_in = 0;
+    top->xm_ack = 0;
+    top->xm_rdata = 0;
 #endif
 
     top->rst = 1;
@@ -330,6 +339,11 @@ int main(int argc, char** argv) {
         top->adc_sdo1 = adc.sdo[0];
         top->adc_sdo2 = adc.sdo[1];
         top->sync_in = sync_src.volts(t_s) > 0;
+        {
+            uint32_t rd = top->xm_rdata;
+            xmem.step(top->xm_req, top->xm_we, top->xm_addr, top->xm_wdata, top->xm_be, top->xm_ack, rd);
+            top->xm_rdata = rd;
+        }
 #endif
         top->clk = 1;
         top->eval();

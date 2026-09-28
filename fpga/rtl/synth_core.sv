@@ -9,6 +9,7 @@
 //   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
 //   0x2002_0000  modulation unit (voice/mod_unit.sv): LFOs, modulation matrix
 //   0x3000_0000  signal bus, output mixer, slots (avk/fx_bus.sv): OUT (L), OUT2 (R)
+//   0x4000_0000  external memory window (32-bit words, shared with the slots; wait states)
 // Unmapped accesses complete with zero data.
 `default_nettype none
 
@@ -26,7 +27,8 @@ module synth_core #(
     parameter int          NUM_VOICES      = 16,
     parameter int          SIM_FAST        = 0,     // SYSINFO flag: firmware shortens delays
     parameter int          NUM_SLOTS       = 2,
-    parameter logic [8*NUM_SLOTS-1:0] SLOT_TYPES = {NUM_SLOTS{8'd1}}  // slot k: [8k +: 8]
+    parameter logic [8*NUM_SLOTS-1:0] SLOT_TYPES = {NUM_SLOTS{8'd1}},  // slot k: [8k +: 8]
+    parameter int          MEM_WORDS       = 0      // external memory (xm_*) size, SYSINFO
 ) (
     input  wire        clk,
     input  wire        rst,
@@ -60,6 +62,14 @@ module synth_core #(
     input  wire        adc_sdo1,
     input  wire        adc_sdo2,
     input  wire        sync_in,
+    // external memory (mem/mem_bram.sv or mem/sdram_ctrl.sv), protocol: mem/mem_arb.sv
+    output logic        xm_req,
+    output logic        xm_we,
+    output logic [23:0] xm_addr,
+    output logic [31:0] xm_wdata,
+    output logic [3:0]  xm_be,
+    input  wire         xm_ack,
+    input  wire  [31:0] xm_rdata,
     // DAC
     output logic       i2s_bck,
     output logic       i2s_lrck,
@@ -73,7 +83,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0006_0000;  // stage 6
+    localparam logic [31:0] VERSION = 32'h0007_0000;  // stage 7
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -108,7 +118,7 @@ module synth_core #(
     /* verilator lint_on PINCONNECTEMPTY */
 
     // ------------------------------------------------------------ bus decode
-    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_VOICE, SEL_MOD, SEL_AUDIO} sel_t;
+    typedef enum logic [2:0] {SEL_NONE, SEL_RAM, SEL_ROM, SEL_PERIPH, SEL_VOICE, SEL_MOD, SEL_AUDIO, SEL_XMEM} sel_t;
 
     logic        req, we;
     sel_t        sel, sel_q;
@@ -128,16 +138,19 @@ module synth_core #(
         else if (mem_addr[31:17] == 15'h1000)         sel = SEL_VOICE;
         else if (mem_addr[31:12] == 20'h20020)        sel = SEL_MOD;
         else if (mem_addr[31:17] == 15'h1800)         sel = SEL_AUDIO;
+        else if (mem_addr[31:26] == 6'b010000)        sel = SEL_XMEM;  // 64 MB window
     end
+
+    logic cpu_xm_ack;
 
     always_ff @(posedge clk) begin
         if (rst) mem_ready <= 1'b0;
-        else     mem_ready <= req;
+        else     mem_ready <= sel == SEL_XMEM ? cpu_xm_ack : req;
         sel_q <= sel;
         blk_q <= blk;
     end
 
-    logic [31:0] ram_q, rom_q, audio_q, voice_q, mod_q;
+    logic [31:0] ram_q, rom_q, audio_q, voice_q, mod_q, xm_q;
     logic [31:0] prd [16];
 
     always_comb begin
@@ -148,6 +161,7 @@ module synth_core #(
             SEL_VOICE:  mem_rdata = voice_q;
             SEL_MOD:    mem_rdata = mod_q;
             SEL_AUDIO:  mem_rdata = audio_q;
+            SEL_XMEM:   mem_rdata = xm_q;
             default:    mem_rdata = '0;
         endcase
     end
@@ -204,6 +218,8 @@ module synth_core #(
                 6'd7:    prd[4] <= FW_FLASH_OFFSET;
                 6'd8:    prd[4] <= 32'(UART_BAUD);
                 6'd9:    prd[4] <= {31'b0, SIM_FAST != 0};
+                6'd10:   prd[4] <= 32'(MEM_WORDS);
+                6'd11:   prd[4] <= 32'(NUM_SLOTS);
                 default: prd[4] <= '0;
             endcase
         end
@@ -289,12 +305,29 @@ module synth_core #(
 
     wire signed [17:0] synth = s0 > 20'sd131071 ? 18'sd131071 : s0 < -20'sd131072 ? -18'sd131072 : s0[17:0];
 
+    logic        sl_req, sl_we, sl_ack;
+    logic [23:0] sl_addr;
+    logic [31:0] sl_wdata, xm_rd;
+
     fx_bus #(.NUM_SLOTS(NUM_SLOTS), .SLOT_TYPES(SLOT_TYPES)) u_bus (
         .clk(clk), .rst(rst), .tick(audio_tick),
         .req(req && sel == SEL_AUDIO), .we(we), .addr(mem_addr[16:0]), .wdata(mem_wdata), .rdata(audio_q),
         .synth(synth), .in1(in1), .in2(in2), .lfo1(lfo1), .lfo2(lfo2), .sync(sync_level), .env(env_out),
-        .gate(gate_any), .out(out_l), .out2(out_r)
+        .gate(gate_any), .out(out_l), .out2(out_r),
+        .m_req(sl_req), .m_we(sl_we), .m_addr(sl_addr), .m_wdata(sl_wdata), .m_ack(sl_ack), .m_rdata(xm_rd)
     );
+
+    // external memory: slots first, then the CPU window (held while mem_valid, until the ack)
+    mem_arb u_arb (
+        .clk(clk), .rst(rst),
+        .a_req(sl_req), .a_we(sl_we), .a_addr(sl_addr), .a_wdata(sl_wdata), .a_be(4'hF), .a_ack(sl_ack),
+        .b_req(mem_valid && !mem_ready && sel == SEL_XMEM), .b_we(we), .b_addr(mem_addr[25:2]),
+        .b_wdata(mem_wdata), .b_be(mem_wstrb), .b_ack(cpu_xm_ack),
+        .rdata(xm_rd), .m_req(xm_req), .m_we(xm_we), .m_addr(xm_addr), .m_wdata(xm_wdata), .m_be(xm_be),
+        .m_ack(xm_ack), .m_rdata(xm_rdata)
+    );
+
+    always_ff @(posedge clk) if (cpu_xm_ack) xm_q <= xm_rd;
 
     dac_scale #(.DATA_W(DATA_W)) u_dac_l (.clk(clk), .x(out_l), .y(dac_l));
     dac_scale #(.DATA_W(DATA_W)) u_dac_r (.clk(clk), .x(out_r), .y(dac_r));

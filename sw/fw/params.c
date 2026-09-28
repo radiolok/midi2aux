@@ -40,39 +40,47 @@ uint32_t cents_pitch(int32_t cents)
     return (uint32_t)(((int64_t)cents * 3579139 + 32768) >> 16);
 }
 
-float fexp_neg(float x)
+static int msb64(uint64_t x)
 {
-    if (x > 80.0f)
-        return 0.0f;
-    int k = (int)(x * 1.44269504f);
-    float r = (x - (float)k * 0.693145752f) - (float)k * 1.42860677e-6f; /* ln 2 split (Cody-Waite) */
-    float t = 1.0f;
-    for (int n = 10; n >= 1; n--) /* Horner form of the Taylor series of e^-r */
-        t = 1.0f - r / (float)n * t;
-    while (k-- > 0)
-        t *= 0.5f;
-    return t;
+    int m = 63;
+    while (m > 0 && !(x >> m))
+        m--;
+    return m;
+}
+
+uint32_t exp2_frac_q30(uint32_t f_q16)
+{
+    /* 2^f = e^(f ln 2), f in [0, 1): Taylor series in Horner form, Q30 */
+    uint64_t y = ((uint64_t)(f_q16 & 0xFFFFu) * 744261118u) >> 16; /* f ln 2, Q30 */
+    uint64_t t = 1u << 30;
+    for (uint32_t n = 10; n >= 1; n--)
+        t = (1u << 30) + ((y * t / n) >> 30);
+    return (uint32_t)t;
 }
 
 uint32_t env_coef(const struct fs_info *fs, uint32_t time_us, int attack)
 {
-    const float ratio = attack ? 1.46633707f : 6.90775528f; /* -ln(1 - 1/1.3), ln(1000) */
-    float fsr = (float)fs->sys_clk / (128.0f * (float)fs->bck_half);
-    float tau = (float)(time_us ? time_us : 1) * 1e-6f / ratio;
-    float x = 1.0f / (tau * fsr);
-    float c = x < 1e-3f ? x * (1.0f - x * 0.5f * (1.0f - x / 3.0f)) : 1.0f - fexp_neg(x);
-    if (c > 1.0f)
-        c = 1.0f;
-    uint32_t shift = 2;
-    float scale = 65536.0f; /* 2^(14 + shift) */
-    while (shift < 31 && c * scale < 65536.0f) {
-        shift++;
-        scale *= 2.0f;
-    }
-    uint32_t mant = (uint32_t)(c * scale + 0.5f);
+    /* c = 1 - e^-x, x = ratio / (time * fs); ratio = -ln(1 - 1/1.3) (attack) or ln(1000), Q24 */
+    const uint64_t ratio = attack ? 24601054u : 115892902u;
+    uint64_t us_per_sample = (((uint64_t)128000000u * fs->bck_half << 24) + fs->sys_clk / 2) / fs->sys_clk; /* Q24 */
+    uint64_t ra = (ratio * us_per_sample + (1u << 23)) >> 24;       /* ratio * 1e6 / fs, Q24 */
+    uint64_t x = (ra << 32) / (time_us ? time_us : 1);                /* Q56 */
+    /* c = x * g(x), g = 1 - x/2 + x^2/6 - ... (x <= 0.15 for times >= 1 ms) */
+    uint64_t x30 = x >> 26, g = 1u << 30;
+    for (uint32_t n = 7; n >= 2; n--)
+        g = (1u << 30) - ((x30 * g / n) >> 30);
+    int e = msb64(x);
+    uint64_t cm = ((x >> (e - 30)) * g) >> 30; /* c = cm * 2^(e - 86) */
+    int m = msb64(cm);
+    int32_t shift = 88 - e - m;
+    uint32_t mant = (uint32_t)((cm + (1ull << (m - 17))) >> (m - 16));
+    if (shift < 2)
+        shift = 2;
+    if (shift > 31)
+        shift = 31;
     if (mant > 131071u)
         mant = 131071u;
-    return (shift << 17) | mant;
+    return ((uint32_t)shift << 17) | mant;
 }
 
 uint32_t res_damping(uint32_t q_x100)

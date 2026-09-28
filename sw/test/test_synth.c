@@ -146,8 +146,11 @@ static void test_modulation(void)
 static void init_avk(void)
 {
     memset(regs, 0, sizeof regs);
-    regs[idx(SLOT_REG(0, SL_TYPE))] = SLOT_MATH;
-    regs[idx(SLOT_REG(1, SL_TYPE))] = SLOT_MATH;
+    static const uint8_t types[] = {SLOT_MATH, SLOT_MATH, SLOT_DELAY, SLOT_DELAY};
+    for (int k = 0; k < 4; k++)
+        regs[idx(SLOT_REG(k, SL_TYPE))] = types[k];
+    regs[idx(SYSINFO_NUM_SLOTS)] = 4;
+    regs[idx(SYSINFO_MEM_WORDS)] = 1000;
     synth_init(&s, 4, FS);
 }
 
@@ -156,14 +159,50 @@ static void test_avk_defaults(void)
     init(4); /* no slots in the hardware: nothing enabled */
     CHECK_EQ(s.nslots, 0);
     init_avk();
-    CHECK_EQ(s.nslots, 2);
+    CHECK_EQ(s.nslots, 4);
+    CHECK_EQ(s.math_slot[0], 0);
+    CHECK_EQ(s.math_slot[1], 1);
+    CHECK_EQ(s.dly_slot[0], 2);
+    CHECK_EQ(s.dly_slot[1], 3);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_MEM_BASE)), 0); /* memory split between the delays */
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_MEM_SIZE)), 500);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_MEM_BASE)), 500);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_MEM_SIZE)), 500);
     CHECK_EQ(hw_read(BUS_OUT2_SEL), BUS_LFO1);
     CHECK_EQ(hw_read(BUS_OUT2_GAIN), 65536);
     CHECK_EQ(hw_read(BUS_GAIN(BUS_IN1)), 0);
-    for (int k = 0; k < 2; k++) {
-        CHECK_EQ(hw_read(SLOT_REG(k, SL_BYPASS)), 1);
+    for (int k = 0; k < 4; k++) /* MATH off, delays at level 0 */
         CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + k)), 0);
-    }
+    CHECK_EQ(hw_read(SLOT_REG(0, SL_BYPASS)), 1);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_BYPASS)), 0); /* delays keep running */
+}
+
+static void test_avk_delay(void)
+{
+    init_avk();
+    /* 250 ms at fs = 99e6 / 2048 */
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_PARAM(0))), 12085);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_SEL_A)), BUS_IN1);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_SEL_A)), BUS_IN2);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_PARAM(1))), 26214); /* feedback 40 % */
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_PARAM(2))), 65536); /* wet only */
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_PARAM(3))), 0);
+    synth_set_param(&s, P_DLY2_TIME, 1000);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_PARAM(0))), 48340);
+    synth_set_param(&s, P_DLY2_LVL, 100);
+    synth_set_param(&s, P_FX_MIX, 50);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + 3)), 32768);
+    synth_set_param(&s, P_DLY1_SRC, BUS_SYNTH);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_SEL_A)), BUS_SYNTH);
+    /* delay time from the SYNC period: 2 Hz = 24170 samples */
+    synth_set_param(&s, P_DLY_SYNC, 1);
+    regs[idx(PERIPH_ADDR(9, 0x04))] = 49500000;
+    regs[idx(PERIPH_ADDR(9, 0x08))] += 1;
+    avk_poll(&s);
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_PARAM(0))), 24170);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_PARAM(0))), 24170);
+    synth_set_param(&s, P_DLY_SYNC, 0);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_PARAM(0))), 48340);
 }
 
 static void test_avk_slots_and_out2(void)
@@ -175,6 +214,7 @@ static void test_avk_slots_and_out2(void)
     synth_set_param(&s, P_SLOT2_K, -50);
     synth_set_param(&s, P_FX_MIX, 100);
     CHECK_EQ(hw_read(SLOT_REG(1, SL_BYPASS)), 0);
+    CHECK_EQ(hw_read(SLOT_REG(0, SL_BYPASS)), 1);
     CHECK_EQ(hw_read(SLOT_REG(1, SL_PARAM(0))), MATH_MUL);
     CHECK_EQ((int32_t)hw_read(SLOT_REG(1, SL_PARAM(1))), -32768);
     CHECK_EQ(hw_read(SLOT_REG(1, SL_SEL_A)), BUS_IN1);
@@ -248,6 +288,7 @@ int main(void)
 {
     RUN(test_avk_defaults);
     RUN(test_avk_slots_and_out2);
+    RUN(test_avk_delay);
     RUN(test_avk_sync);
     RUN(test_avk_calibration);
     RUN(test_modulation);

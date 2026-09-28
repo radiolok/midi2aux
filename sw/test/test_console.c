@@ -102,6 +102,19 @@ static void test_avk(void)
     CHECK(strstr(out, "error") != 0);
 }
 
+static void test_mem(void)
+{
+    synth_init(&s, 4, FS);
+    console_init(&s, 0);
+    feed("mem 5 -1234\n");
+    CHECK_STR(out, "ok mem 5 = -1234\n");
+    CHECK_EQ(hw_read(XRAM_BASE + 20), (uint32_t)-1234);
+    feed("mem 5\n");
+    CHECK_STR(out, "ok mem 5 = -1234\n");
+    feed("mem 5 x\n");
+    CHECK(strstr(out, "error") != 0);
+}
+
 static void test_long_line_truncated(void)
 {
     console_init(&s, 0);
@@ -114,6 +127,7 @@ static void test_long_line_truncated(void)
 int main(void)
 {
     RUN(test_avk);
+    RUN(test_mem);
     RUN(test_set_get);
     RUN(test_route_and_notes);
     RUN(test_long_line_truncated);

@@ -13,7 +13,7 @@
 #define SYNTH_BASE   0x20010000u
 #define AUDIO_BASE   0x30000000u
 #define SLOT_BASE    0x30010000u
-#define XRAM_BASE    0x40000000u
+#define XRAM_BASE    0x40000000u /* external memory window, shared with the delay slots */
 
 #define PERIPH_ADDR(n, off) (PERIPH_BASE + (n) * 0x100u + (off))
 #define PERIPH(n, off) REG32(PERIPH_ADDR(n, off))
@@ -54,6 +54,8 @@
 #define SYSINFO_FW_FLASH   PERIPH(4, 0x1C)
 #define SYSINFO_UART_BAUD  PERIPH(4, 0x20)
 #define SYSINFO_FLAGS      PERIPH(4, 0x24) /* bit0: simulation (shorter delays) */
+#define SYSINFO_MEM_WORDS  PERIPH_ADDR(4, 0x28) /* external memory (delay lines), 32-bit words */
+#define SYSINFO_NUM_SLOTS  PERIPH_ADDR(4, 0x2C)
 #define SYSINFO_ID_AVK6    0x364B5641u
 
 /* 5: SPI master for the flash (and any SPI master block) */
@@ -170,7 +172,8 @@ enum { BUS_SYNTH, BUS_IN1, BUS_IN2, BUS_LFO1, BUS_LFO2, BUS_SYNC, BUS_ENV, BUS_G
 #define SL_MEM_BASE        0x10u
 #define SL_MEM_SIZE        0x14u
 #define SL_PARAM(j)        (0x40u + 4u * (j))
-enum { SLOT_NONE, SLOT_MATH };
+enum { SLOT_NONE, SLOT_MATH, SLOT_DELAY };
+/* DELAY: PARAM0 TIME (samples), PARAM1 FB, PARAM2 WET, PARAM3 DRY (Q2.16) */
 enum { MATH_MUL, MATH_DIV, MATH_ABS, MATH_ADD, MATH_SUB, MATH_MIN, MATH_MAX, MATH_MOD, MATH_AXPB };
 #define Q16_ONE            65536
 

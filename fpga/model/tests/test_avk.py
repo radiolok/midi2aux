@@ -68,3 +68,43 @@ def test_bus_order_and_mixer():
     b.gain[avk.S_IN1] = 4 << 16                                 # overdrive: soft clipped at 1.25 МЕ
     out, _ = b.sample(0, one, 0, 0, 0, 0, 0, 0)
     assert 65536 < out <= 81920
+
+
+def _sine_bus(slot_type, params, mem_words, n=4000, f=440.0):
+    m = avk.AvkBus((slot_type,), mem_words=mem_words)
+    sl = m.slots[0]
+    sl.sel_a, sl.mem_size = avk.S_IN1, mem_words
+    for j, v in enumerate(params):
+        sl.param[j] = v
+    m.gain = [0] * m.n
+    m.gain[8] = 1 << 16
+    fs = 48339.84
+    x = [int(0.5 * 65536 * np.sin(2 * np.pi * f * i / fs)) for i in range(n)]
+    return np.array([m.sample(0, v, 0, 0, 0, 0, 0, 0)[0] for v in x]) / 65536, np.array(x) / 65536
+
+
+def test_chorus_is_modulated_delay():
+    """Depth 0: a pure delay of BASE samples; depth > 0: the delay moves (phase shifts vary)."""
+    y, x = _sine_bus(avk.TYPE_CHORUS, [100, 0, 0, 0, 1 << 16, 0], 1024)
+    assert np.max(np.abs(y[200:] - x[100:-100])) < 1e-4
+    y2, _ = _sine_bus(avk.TYPE_CHORUS, [100, 60, 1 << 22, 0, 1 << 16, 0], 1024)
+    assert np.max(np.abs(y2[300:] - y[300:])) > 0.05          # modulated
+    assert np.max(np.abs(y2)) < 0.55                          # interpolation keeps the level
+
+
+def test_reverb_tail_decays():
+    m = avk.AvkBus((avk.TYPE_REVERB,), mem_words=6000)
+    sl = m.slots[0]
+    sl.sel_a, sl.mem_size = avk.S_IN1, 6000
+    sl.param[:4] = [int(0.84 * 65536), int(0.2 * 65536), 1 << 16, 0]
+    m.gain = [0] * m.n
+    m.gain[8] = 1 << 16
+    out = [m.sample(0, (1 << 16) if i < 10 else 0, 0, 0, 0, 0, 0, 0)[0] for i in range(48000)]
+    out = np.array(out) / 65536
+    e = [np.sqrt(np.mean(out[k:k + 4800] ** 2)) for k in range(0, 48000, 4800)]
+    assert e[1] > 1e-3                                        # a tail exists
+    assert all(e[k + 1] < e[k] for k in range(1, 8))          # and decays
+    assert e[9] < e[1] / 10
+    small = avk.Slot(avk.TYPE_REVERB, [0] * 100)
+    small.mem_size = 100
+    assert small.reverb(1234) == 1234                       # too little memory: passes A

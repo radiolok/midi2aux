@@ -11,6 +11,16 @@ S8 + k: output of slot k. Slots run in order; a slot reading a later slot sees i
 
 MATH slot (TYPE_ID 1): PARAM0 = op, PARAM1 = k (Q2.16):
     0 A*B   1 A/B   2 |A|   3 A+B   4 A-B   5 min   6 max   7 A mod B   8 A*k+B   (all saturated)
+DELAY slot (TYPE_ID 2): external memory words MEM_BASE .. MEM_BASE + MEM_SIZE - 1,
+PARAM0 = TIME (samples, clamped to MEM_SIZE - 1), PARAM1 = FB, PARAM2 = WET, PARAM3 = DRY (Q2.16):
+    d = mem[wp - TIME]; mem[wp] = sat18(A + (FB * d) >> 16); y = sat18((DRY * A + WET * d) >> 16)
+CHORUS slot (TYPE_ID 3), modulated delay line (chorus / flanger): PARAM0 BASE, PARAM1 DEPTH (samples),
+PARAM2 RATE (LFO phase increment, 32 bit), PARAM3 FB, PARAM4 WET, PARAM5 DRY (Q2.16); triangle LFO
+tri = phase[30:15] (inverted when phase[31]); delay = BASE + DEPTH * tri / 2^16 samples, linear
+interpolation between two taps. MEM_SIZE < 2: y = A.
+REVERB slot (TYPE_ID 4): 4 comb filters with damping + 2 allpasses (Schroeder / Freeverb), buffers of
+REVERB_LEN words one after another from MEM_BASE (needs MEM_SIZE >= sum, else y = A); PARAM0 ROOM
+(comb feedback), PARAM1 DAMP (0..65535), PARAM2 WET, PARAM3 DRY. Exact arithmetic: see Slot.reverb.
 Mixer: OUT  = softclip(sat21((sum_i GAIN_i * S_i) >> 16) + OUT_DC)
        OUT2 = softclip(sat21((S[SEL2] * GAIN2) >> 16) + OUT2_DC)
 """
@@ -28,6 +38,10 @@ BUS_FIXED = 8
 S_SYNTH, S_IN1, S_IN2, S_LFO1, S_LFO2, S_SYNC, S_ENV, S_GATE = range(8)
 MUL, DIV, ABS, ADD, SUB, MIN, MAX, MOD, AXPB = range(9)
 TYPE_MATH = 1
+TYPE_DELAY = 2
+TYPE_CHORUS = 3
+TYPE_REVERB = 4
+REVERB_LEN = (1116, 1188, 1277, 1356, 556, 441)
 
 
 def sat(x, bits):
@@ -94,25 +108,101 @@ def math_op(op, a, b, k=0):
     return a
 
 
+def s18(v):
+    v &= (1 << 18) - 1
+    return v - (1 << 18) if v & (1 << 17) else v
+
+
 class Slot:
-    def __init__(self, type_id=TYPE_MATH):
+    def __init__(self, type_id=TYPE_MATH, mem=None):
         self.type_id = type_id
         self.sel_a = S_IN1
         self.sel_b = S_IN2
         self.bypass = 0
         self.param = [0] * 16
+        self.mem = mem  # shared external memory (list of 32-bit words)
+        self.mem_base = self.mem_size = 0
+        self.wp = 0
+        self.ph = 0
+        self.rp = [0] * len(REVERB_LEN)
+        self.filt = [0] * 4
+        if type_id in (TYPE_DELAY, TYPE_REVERB):
+            self.param[3] = 1 << 16  # DRY
+        if type_id == TYPE_CHORUS:
+            self.param[5] = 1 << 16
+
+    def delay(self, a):
+        size = self.mem_size
+        if size == 0:
+            return a
+        t, fb, wet, dry = min(self.param[0], size - 1), s18(self.param[1]), s18(self.param[2]), s18(self.param[3])
+        wp = 0 if self.wp >= size else self.wp
+        d = s18(self.mem[self.mem_base + (wp - t) % size])
+        self.mem[self.mem_base + wp] = sat(a + ((fb * d) >> 16), 18) & 0xFFFFFFFF
+        self.wp = 0 if wp + 1 == size else wp + 1
+        return sat((dry * a + wet * d) >> 16, 18)
+
+    def chorus(self, a):
+        size = self.mem_size
+        if size < 2:
+            return a
+        base, depth, rate = self.param[0] & 0xFFFFFF, self.param[1] & 0xFFFFFF, self.param[2] & 0xFFFFFFFF
+        fb, wet, dry = s18(self.param[3]), s18(self.param[4]), s18(self.param[5])
+        ph = self.ph
+        tri = (ph >> 15) & 0xFFFF
+        if ph >> 31:
+            tri ^= 0xFFFF
+        off = (base << 16) + depth * tri
+        i, fr = min(off >> 16, size - 2), off & 0xFFFF
+        wp = 0 if self.wp >= size else self.wp
+        r0 = s18(self.mem[self.mem_base + (wp - i) % size])
+        r1 = s18(self.mem[self.mem_base + (wp - i - 1) % size])
+        d = r0 + (((r1 - r0) * fr) >> 16)
+        self.mem[self.mem_base + wp] = sat(a + ((fb * d) >> 16), 18) & 0xFFFFFFFF
+        self.wp = 0 if wp + 1 == size else wp + 1
+        self.ph = (ph + rate) & 0xFFFFFFFF
+        return sat((dry * a + wet * d) >> 16, 18)
+
+    def reverb(self, a):
+        if self.mem_size < sum(REVERB_LEN):
+            return a
+        room, damp, wet, dry = s18(self.param[0]), self.param[1] & 0xFFFF, s18(self.param[2]), s18(self.param[3])
+        x = a >> 2
+        acc, off = 0, self.mem_base
+        for k, n in enumerate(REVERB_LEN):
+            adr = off + self.rp[k]
+            o = s18(self.mem[adr])
+            if k < 4:  # comb with a one-pole lowpass in the loop
+                self.filt[k] = sat((o * (65536 - damp) + self.filt[k] * damp) >> 16, 18)
+                self.mem[adr] = sat(x + ((self.filt[k] * room) >> 16), 18) & 0xFFFFFFFF
+                acc += o
+                if k == 3:
+                    acc = sat(acc, 18)
+            else:  # allpass, feedback 1/2
+                out = sat(o - acc, 18)
+                self.mem[adr] = sat(acc + (o >> 1), 18) & 0xFFFFFFFF
+                acc = out
+            self.rp[k] = 0 if self.rp[k] + 1 == n else self.rp[k] + 1
+            off += n
+        return sat((dry * a + wet * acc) >> 16, 18)
 
     def run(self, a, b):
+        # memory slots keep running when bypassed (the lines stay filled), bypass only selects A
+        y = {TYPE_DELAY: self.delay, TYPE_CHORUS: self.chorus, TYPE_REVERB: self.reverb}.get(
+            self.type_id, lambda v: None)(a)
         if self.bypass:
             return a
         if self.type_id == TYPE_MATH:
             return math_op(self.param[0], a, b, sat(self.param[1], 18))
+        if y is not None:
+            return y
         return a
 
 
 class AvkBus:
-    def __init__(self, slot_types=(TYPE_MATH, TYPE_MATH)):
-        self.slots = [Slot(t) for t in slot_types]
+    def __init__(self, slot_types=(TYPE_MATH, TYPE_MATH), mem_words=0):
+        self.mem = [0] * mem_words
+        self.slots = [Slot(t, self.mem) for t in slot_types]
         self.n = BUS_FIXED + len(self.slots)
         self.s = [0] * self.n
         self.gain = [0] * self.n

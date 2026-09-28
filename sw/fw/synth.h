@@ -10,7 +10,8 @@
 #include "voice_alloc.h"
 
 #define MOD_ROUTES 8
-#define AVK_MAX_SLOTS 2 /* slots the patch can configure (P_SLOT1_*, P_SLOT2_*) */
+#define AVK_MAX_SLOTS 8 /* hardware slots looked at */
+#define AVK_PATCH_SLOTS 2 /* MATH and DELAY slots the patch configures (P_SLOTn_*, P_DLYn_*) */
 struct mod_route {
     uint8_t src, via, dst;
     int32_t depth; /* raw register value: pitch units (PM/CM) or Q16 (AM/PW) */
@@ -28,6 +29,8 @@ struct synth {
     struct mod_route routes[MOD_ROUTES];
     int nslots;                    /* effect slots in the hardware */
     uint8_t slot_type[AVK_MAX_SLOTS];
+    int8_t math_slot[AVK_PATCH_SLOTS], dly_slot[AVK_PATCH_SLOTS]; /* hardware index, -1 none */
+    uint32_t sync_samples;         /* SYNC period in samples, 0 unknown */
     uint32_t sync_edges;           /* last seen SYNC edge count */
     int sync_note;                 /* note held by SYNC_NOTE mode, -1 none */
 };

@@ -6,6 +6,7 @@ in build/unit/.
 """
 
 import hashlib
+import xml.etree.ElementTree as ET
 import os
 import sys
 from pathlib import Path
@@ -43,10 +44,11 @@ def run(top, sources, params=None, module=None, testcase=None, extra_env=None, w
         + (["--trace-fst"] if waves else []),
         always=False,
     )
-    env = {"PYTHONPATH": os.pathsep.join([str(Path(__file__).parent), str(MODEL)])}
+    env = {"PYTHONPATH": os.pathsep.join([str(Path(__file__).resolve().parent), str(MODEL)])}
     env.update(extra_env or {})
-    # raises SystemExit if any cocotb test fails
-    runner.test(
+    # raises SystemExit if any cocotb test fails (under pytest); also make sure tests did run:
+    # a test module that fails to import leaves no test cases in the results file
+    results = runner.test(
         hdl_toplevel=top,
         test_module=module,
         testcase=testcase,
@@ -55,3 +57,7 @@ def run(top, sources, params=None, module=None, testcase=None, extra_env=None, w
         extra_env=env,
         waves=waves,
     )
+    cases = ET.parse(results).getroot().iter("testcase") if Path(results).exists() else []
+    cases = list(cases)
+    if not cases or any(c.find("failure") is not None or c.find("error") is not None for c in cases):
+        raise SystemExit(f"cocotb: no test ran or a test failed ({results})")

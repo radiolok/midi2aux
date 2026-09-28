@@ -36,10 +36,22 @@ module top (
     output wire       i2s_lrck,
     output wire       i2s_din,
     output wire       dac_xsmt,
-    output wire [5:0] led_n
+    output wire [5:0] led_n,
+    // GW2AR-18 embedded SDRAM (64 Mbit, 2M x 32): fixed port names, no pin constraints
+    output wire        O_sdram_clk,
+    output wire        O_sdram_cke,
+    output wire        O_sdram_cs_n,
+    output wire        O_sdram_cas_n,
+    output wire        O_sdram_ras_n,
+    output wire        O_sdram_wen_n,
+    output wire [3:0]  O_sdram_dqm,
+    output wire [10:0] O_sdram_addr,
+    output wire [1:0]  O_sdram_ba,
+    inout  wire [31:0] IO_sdram_dq
 );
 
     localparam int SYS_CLK_HZ = 99_000_000;  // see pll_sys.v
+    localparam int MEM_WORDS  = 2 * 1024 * 1024;  // embedded SDRAM, 43 s of delay
 
     wire clk, pll_lock;
 
@@ -61,11 +73,19 @@ module top (
     logic [5:0] led;
     logic       trap;
 
+    logic        xm_req, xm_we, xm_ack;
+    logic [23:0] xm_addr;
+    logic [31:0] xm_wdata, xm_rdata;
+    logic [3:0]  xm_be;
+
     synth_core #(
         .SYS_CLK_HZ     (SYS_CLK_HZ),
         .RAM_BYTES      (32768),
         .FW_FLASH_OFFSET(32'h0050_0000),
-        .NUM_VOICES     (32)
+        .NUM_VOICES     (32),
+        .NUM_SLOTS      (4),
+        .SLOT_TYPES     (32'h02_02_01_01),  // MATH, MATH, DELAY, DELAY
+        .MEM_WORDS      (MEM_WORDS)
     ) u_core (
         .clk       (clk),
         .rst       (rst),
@@ -95,6 +115,13 @@ module top (
         .adc_sdo1  (adc_sdo1),
         .adc_sdo2  (adc_sdo2),
         .sync_in   (sync_in),
+        .xm_req    (xm_req),
+        .xm_we     (xm_we),
+        .xm_addr   (xm_addr),
+        .xm_wdata  (xm_wdata),
+        .xm_be     (xm_be),
+        .xm_ack    (xm_ack),
+        .xm_rdata  (xm_rdata),
         .i2s_bck   (i2s_bck),
         .i2s_lrck  (i2s_lrck),
         .i2s_din   (i2s_din),
@@ -103,6 +130,24 @@ module top (
         .btn       ({1'b0, btn_user}),
         .trap      (trap)
     );
+
+    logic [31:0] dq_o;
+    logic        dq_oe;
+
+    /* verilator lint_off PINCONNECTEMPTY */
+    sdram_ctrl #(.SYS_CLK_HZ(SYS_CLK_HZ)) u_sdram (
+        .clk(clk), .rst(rst), .req(xm_req), .we(xm_we), .addr(xm_addr), .wdata(xm_wdata), .be(xm_be),
+        .ack(xm_ack), .rdata(xm_rdata), .ready(),
+        .sd_cke(O_sdram_cke), .sd_cs_n(O_sdram_cs_n), .sd_ras_n(O_sdram_ras_n), .sd_cas_n(O_sdram_cas_n),
+        .sd_we_n(O_sdram_wen_n), .sd_ba(O_sdram_ba), .sd_addr(O_sdram_addr), .sd_dqm(O_sdram_dqm),
+        .sd_dq_o(dq_o), .sd_dq_oe(dq_oe), .sd_dq_i(IO_sdram_dq)
+    );
+    /* verilator lint_on PINCONNECTEMPTY */
+
+    // SDRAM clock in phase with clk: read data are sampled CL + 1 clocks after READ
+    // (sdram_ctrl RD_EXTRA = 0). Check the phase on the board (HO-07).
+    assign O_sdram_clk = clk;
+    assign IO_sdram_dq = dq_oe ? dq_o : 32'bz;
 
     assign led_n = ~led;
 

@@ -40,6 +40,8 @@ module top (
 );
 
     localparam int SYS_CLK_HZ = 99_000_000;  // see pll_sys.v
+    // delay memory in BSRAM: 4096 x 18 bit = 85 ms (the on-chip PSRAM needs the Gowin PSRAM IP)
+    localparam int MEM_WORDS  = 4096;
 
     wire clk, pll_lock;
 
@@ -61,11 +63,19 @@ module top (
     logic [5:0] led;
     logic       trap;
 
+    logic        xm_req, xm_we, xm_ack;
+    logic [23:0] xm_addr;
+    logic [31:0] xm_wdata, xm_rdata;
+    logic [3:0]  xm_be;
+
     synth_core #(
         .SYS_CLK_HZ     (SYS_CLK_HZ),
         .RAM_BYTES      (32768),
         .FW_FLASH_OFFSET(32'h0010_0000),
-        .NUM_VOICES     (16)
+        .NUM_VOICES     (16),
+        .NUM_SLOTS      (3),
+        .SLOT_TYPES     (24'h02_01_01),   // MATH, MATH, DELAY
+        .MEM_WORDS      (MEM_WORDS)
     ) u_core (
         .clk       (clk),
         .rst       (rst),
@@ -95,6 +105,13 @@ module top (
         .adc_sdo1  (adc_sdo1),
         .adc_sdo2  (adc_sdo2),
         .sync_in   (sync_in),
+        .xm_req    (xm_req),
+        .xm_we     (xm_we),
+        .xm_addr   (xm_addr),
+        .xm_wdata  (xm_wdata),
+        .xm_be     (xm_be),
+        .xm_ack    (xm_ack),
+        .xm_rdata  (xm_rdata),
         .i2s_bck   (i2s_bck),
         .i2s_lrck  (i2s_lrck),
         .i2s_din   (i2s_din),
@@ -102,6 +119,11 @@ module top (
         .led       (led),
         .btn       ({1'b0, ~btn_user_n}),
         .trap      (trap)
+    );
+
+    mem_bram #(.WORDS(MEM_WORDS), .DW(18)) u_xmem (
+        .clk(clk), .rst(rst), .req(xm_req), .we(xm_we), .addr(xm_addr), .wdata(xm_wdata), .be(xm_be),
+        .ack(xm_ack), .rdata(xm_rdata)
     );
 
     assign led_n = ~led;

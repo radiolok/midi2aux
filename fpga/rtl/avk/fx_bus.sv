@@ -6,7 +6,9 @@
 // Bit-exact model: fpga/model/synthmodel/avk.py (AvkBus).
 //
 // Adding an effect: a module with the slot interface (see slot_math.sv), a TYPE_ID, one line in
-// the generate case below, and a descriptor in the firmware. SLOT_TYPES lists the slots.
+// the generate case below, and a descriptor in the firmware. SLOT_TYPES lists the slots:
+// 1 MATH, 2 DELAY, 3 CHORUS, 4 REVERB. Slots run one at a time, so the memory port (m_*) is just the running
+// slot's port (req held until ack, see mem/mem_arb.sv).
 //
 // CPU registers (byte offsets in the 128 KB window at 0x3000_0000):
 //   0x0_0000 OUT_DC  0x0_0004 OUT2_DC  0x0_0008 OUT2_SEL  0x0_000C OUT2_GAIN
@@ -17,7 +19,8 @@
 
 module fx_bus #(
     parameter int                     NUM_SLOTS  = 2,
-    parameter logic [8*NUM_SLOTS-1:0] SLOT_TYPES = {NUM_SLOTS{8'd1}}  // slot k: [8k +: 8]
+    parameter logic [8*NUM_SLOTS-1:0] SLOT_TYPES = {NUM_SLOTS{8'd1}},  // slot k: [8k +: 8]
+    parameter int                     AW         = 24                  // memory word address
 ) (
     input  wire                clk,
     input  wire                rst,
@@ -36,7 +39,13 @@ module fx_bus #(
     input  wire signed [17:0]  env,
     input  wire                gate,
     output logic signed [17:0] out,
-    output logic signed [17:0] out2
+    output logic signed [17:0] out2,
+    output logic               m_req,
+    output logic               m_we,
+    output logic [AW-1:0]      m_addr,
+    output logic [31:0]        m_wdata,
+    input  wire                m_ack,
+    input  wire  [31:0]        m_rdata
 );
 
     localparam int NB = 8 + NUM_SLOTS;
@@ -134,6 +143,10 @@ module fx_bus #(
     logic [NUM_SLOTS-1:0] start, done;
     logic signed [17:0]   sa, sb;
     logic signed [17:0]   y [NUM_SLOTS];
+    logic [NUM_SLOTS-1:0] s_req, s_we;
+    logic [AW-1:0]        s_addr [NUM_SLOTS];
+    logic [31:0]          s_wdata [NUM_SLOTS];
+    logic [KW-1:0]        cur;  // running slot
 
     for (genvar k = 0; k < NUM_SLOTS; k++) begin : g_slot
         case (SLOT_TYPES[8*k +: 8])
@@ -142,12 +155,45 @@ module fx_bus #(
                     .clk(clk), .rst(rst), .start(start[k]), .a(sa), .b(sb),
                     .p_we(p_we[k]), .p_addr(4'(sreg - 6'd16)), .p_wdata(wdata), .y(y[k]), .done(done[k])
                 );
+                assign {s_req[k], s_we[k], s_addr[k], s_wdata[k]} = '0;
+            end
+            8'd2: begin : g_delay
+                slot_delay #(.AW(AW)) u_slot (
+                    .clk(clk), .rst(rst), .start(start[k]), .a(sa), .b(sb),
+                    .p_we(p_we[k]), .p_addr(4'(sreg - 6'd16)), .p_wdata(wdata),
+                    .mem_base(mem_base[k][AW-1:0]), .mem_size(mem_size[k][AW-1:0]),
+                    .m_req(s_req[k]), .m_we(s_we[k]), .m_addr(s_addr[k]), .m_wdata(s_wdata[k]),
+                    .m_ack(m_ack && cur == KW'(k)), .m_rdata(m_rdata), .y(y[k]), .done(done[k])
+                );
+            end
+            8'd3: begin : g_chorus
+                slot_chorus #(.AW(AW)) u_slot (
+                    .clk(clk), .rst(rst), .start(start[k]), .a(sa), .b(sb),
+                    .p_we(p_we[k]), .p_addr(4'(sreg - 6'd16)), .p_wdata(wdata),
+                    .mem_base(mem_base[k][AW-1:0]), .mem_size(mem_size[k][AW-1:0]),
+                    .m_req(s_req[k]), .m_we(s_we[k]), .m_addr(s_addr[k]), .m_wdata(s_wdata[k]),
+                    .m_ack(m_ack && cur == KW'(k)), .m_rdata(m_rdata), .y(y[k]), .done(done[k])
+                );
+            end
+            8'd4: begin : g_reverb
+                slot_reverb #(.AW(AW)) u_slot (
+                    .clk(clk), .rst(rst), .start(start[k]), .a(sa), .b(sb),
+                    .p_we(p_we[k]), .p_addr(4'(sreg - 6'd16)), .p_wdata(wdata),
+                    .mem_base(mem_base[k][AW-1:0]), .mem_size(mem_size[k][AW-1:0]),
+                    .m_req(s_req[k]), .m_we(s_we[k]), .m_addr(s_addr[k]), .m_wdata(s_wdata[k]),
+                    .m_ack(m_ack && cur == KW'(k)), .m_rdata(m_rdata), .y(y[k]), .done(done[k])
+                );
             end
             default: begin : g_none  // unknown type: passes A through
+                logic signed [17:0] y_q;
+                logic               done_q;
                 always_ff @(posedge clk) begin
-                    y[k]    <= sa;
-                    done[k] <= start[k];
+                    y_q    <= sa;
+                    done_q <= start[k];
                 end
+                assign y[k]    = y_q;
+                assign done[k] = done_q;
+                assign {s_req[k], s_we[k], s_addr[k], s_wdata[k]} = '0;
             end
         endcase
     end
@@ -155,7 +201,6 @@ module fx_bus #(
     // ------------------------------------------------------------ sequencer
     typedef enum logic [2:0] {IDLE, SLOT_GO, SLOT_WAIT, MIX, CLIP} state_t;
     state_t        state;
-    logic [KW-1:0] k;
     logic [BW-1:0] i;
     logic signed [45:0] acc;
     logic signed [20:0] mix, mix2;
@@ -175,6 +220,7 @@ module fx_bus #(
         start <= '0;
         if (rst) begin
             state <= IDLE;
+            cur   <= '0;
             out   <= '0;
             out2  <= '0;
             mix   <= '0;
@@ -191,23 +237,23 @@ module fx_bus #(
                     s[5] <= sync ? ONE : -ONE;
                     s[6] <= env;
                     s[7] <= gate ? ONE : '0;
-                    k     <= '0;
+                    cur   <= '0;
                     state <= SLOT_GO;
                 end
                 SLOT_GO: begin
-                    sa       <= s[sel_a[k]];
-                    sb       <= s[sel_b[k]];
-                    start[k] <= 1'b1;
-                    state    <= SLOT_WAIT;
+                    sa         <= s[sel_a[cur]];
+                    sb         <= s[sel_b[cur]];
+                    start[cur] <= 1'b1;
+                    state      <= SLOT_WAIT;
                 end
-                SLOT_WAIT: if (done[k]) begin
-                    s[BW'(8 + 32'(k))] <= bypass[k] ? sa : y[k];
-                    if (k == KW'(NUM_SLOTS - 1)) begin
+                SLOT_WAIT: if (done[cur]) begin
+                    s[BW'(8 + 32'(cur))] <= bypass[cur] ? sa : y[cur];
+                    if (cur == KW'(NUM_SLOTS - 1)) begin
                         state <= MIX;
                         i     <= '0;
                         acc   <= '0;
                     end else begin
-                        k     <= k + 1'b1;
+                        cur   <= cur + 1'b1;
                         state <= SLOT_GO;
                     end
                 end
@@ -234,10 +280,15 @@ module fx_bus #(
         end
     end
 
+    assign m_req   = s_req[cur];
+    assign m_we    = s_we[cur];
+    assign m_addr  = s_addr[cur];
+    assign m_wdata = s_wdata[cur];
+
     softclip #(.IN_W(21)) u_clip1 (.clk(clk), .x(mix), .y(clip1));
     softclip #(.IN_W(21)) u_clip2 (.clk(clk), .x(mix2), .y(clip2));
 
-    wire unused = &{1'b0, wdata[31:18], addr[1:0], mem_base[0], mem_size[0]};
+    wire unused = &{1'b0, wdata[31:18], addr[1:0], mem_base[0], mem_size[0], m_ack, m_rdata, p_we};  // MATH-only builds
 
 endmodule
 

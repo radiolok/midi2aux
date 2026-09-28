@@ -96,7 +96,7 @@ static void setup(void)
 static void test_first_page(void)
 {
     setup();
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/13 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/16 >");
     CHECK_STR(row(2), "1 ГЕН1 форма               saw");
     CHECK_STR(row(4), "2 ГЕН2 форма               saw");
     CHECK_STR(row(6), "3 ГЕН2 расстр.            7 ct");
@@ -112,14 +112,14 @@ static void test_page_navigation(void)
     setup();
     in.enc[ENC_MENU] = 3;
     update(10);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/13 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/16 >");
     in.enc[ENC_MENU] = -1; /* 4 back: wraps to the last page */
     update(20);
-    CHECK_STR(row(0), "< СЛОТЫ: k, FX MIX  13/13 >");
+    CHECK_STR(row(0), "< ЗАДЕРЖКИ: УРОВНИ  16/16 >");
     in.pressed = 1; /* MENU button: first page */
     update(30);
     in.pressed = 0;
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/13 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/16 >");
 }
 
 static void test_edit_parameters(void)
@@ -148,11 +148,11 @@ static void test_drawing_resumes_when_fifo_frees(void)
     update(10);
     CHECK_EQ(glyph_calls >= 5, 1);
     CHECK(u.ndirty > 0);
-    CHECK(strcmp(row(0), "< ФИЛЬТР  4/13 >") != 0); /* not finished yet */
+    CHECK(strcmp(row(0), "< ФИЛЬТР  4/16 >") != 0); /* not finished yet */
     fifo_room = 1 << 30;
     poll_all();
     CHECK_EQ(u.ndirty, 0);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/13 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/16 >");
 }
 
 static void test_steps(void)
