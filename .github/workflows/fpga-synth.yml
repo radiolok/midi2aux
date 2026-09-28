@@ -34,17 +34,19 @@ jobs:
           pip install -r fpga/requirements.txt
       - name: Lint (verilator -Wall)
         run: make lint
-      - name: Simulate stub_core and check audio
+      - name: RTL unit tests (cocotb)
+        run: make unit
+      - name: System simulation and audio checks
         run: make sim
       - name: Upload simulation results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sim-stub-core
+          name: sim-results
           path: |
-            build/sim/*.wav
-            build/sim/*.png
-            build/sim/*.json
+            build/sim/*/*.wav
+            build/sim/*/*.png
+            build/sim/*/*.json
           if-no-files-found: warn
 
   model:

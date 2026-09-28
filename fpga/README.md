@@ -20,8 +20,9 @@ fpga/
     tang_nano_9k/      top.sv, pll_sys.v (rPLL), .cst, .sdc, build.tcl (gw_sh)
     tang_nano_20k/     то же для 20K
   sim/
-    tb_stub_core.cpp   тестбенч Verilator: MIDI → ядро → декодер I2S → WAV + JSON
-    check_stub.py      анализ WAV: частота, THD, форма, сравнение с моделью → pass/fail
+    tb/tb_audio.cpp    общий тестбенч Verilator для ядер: MIDI → ядро → декодер I2S → WAV + JSON
+    system/            системные тесты (pytest): сборка, прогон, анализ WAV, графики
+    unit/              юнит-тесты блоков RTL (cocotb + Verilator), сравнение с моделями
     stimuli/           файлы стимулов MIDI
     gowin_stubs/       заглушки примитивов Gowin для линта board-top
   model/
@@ -47,40 +48,48 @@ pip install -r fpga/requirements.txt                               # numpy, scip
 | Команда | Что делает |
 |---|---|
 | `make lint` | `verilator --lint-only -Wall`: ядро и оба board-top (с заглушкой `rPLL`) |
-| `make sim` | сборка тестбенча, симуляция 0.3 с, проверки `check_stub.py` |
+| `make unit` | юнит-тесты блоков RTL (cocotb) |
+| `make sim` | системные тесты: ядро целиком, MIDI → WAV → проверки |
 | `make model` | pytest моделей + эталонные WAV в `build/model/` |
 | `make fw` | прошивка RISC-V → `build/sw/fw.{elf,bin,hex,map}` |
-| `make test` | `lint` + `model` + `sim` — то же, что проверяет CI (кроме `fw`) |
+| `make test` | `lint` + `model` + `unit` + `sim` — то же, что проверяет CI (кроме `fw`) |
 | `make all` | `test` + `fw` |
 | `make luts` | перегенерировать `rtl/audio/sine_quarter_rom.sv` из модели |
 | `make plots` | `sim` + `refs` и обновить графики в `sim/img/`, `model/img/` |
 | `make bitstream-9k`, `make bitstream-20k` | Gowin EDA, только локально |
 
-Параметры: `make sim SYS_CLK_HZ=99000000 FS_HZ=48000 TONE_HZ=440 SIM_DURATION=0.3`.
+Отдельный тест: `python3 -m pytest -q fpga/sim/system/test_mono_core.py`.
 
-Результаты в `build/sim/`: `stub_core.wav` (стерео, 24 бит — можно послушать), `stub_core.png`
-(осциллограмма и спектры), `stub_core_tb.json` (сводка тестбенча), `stub_core_report.json` (проверки).
-В CI те же файлы — артефакты `sim-stub-core`, `model-refs`, `firmware` на странице запуска workflow.
+Результаты в `build/sim/<тест>/`: WAV (стерео, 24 бит — можно послушать), PNG (осциллограммы, спектры),
+JSON (сводка тестбенча). В CI — артефакты `sim-results`, `model-refs`, `firmware` на странице запуска workflow.
 
 ## Что проверяется
 
-Тестбенч (`tb_stub_core.cpp`, код возврата ≠ 0 при ошибке):
+Тестбенч (`tb/tb_audio.cpp`, код возврата ≠ 0 при ошибке):
 - формат I2S на уровне выводов, как его принимает ЦАП: LRCK/DIN меняются только по спаду BCK,
   32 такта BCK на слот, MSB через такт после фронта LRCK, биты ниже `DATA_W` — нули, период BCK постоянный;
 - MIDI: байты из файла стимулов передаются на `midi_rx` с таймингом 31250 бод; принятые ядром байты
-  совпадают с отправленными.
+  совпадают с отправленными (ядра с `-DMIDI_ECHO`).
 
-`check_stub.py`:
+`system/test_stub_core.py` (этап 0):
 - fs = sys_clk / (128 · BCK_HALF), отклонение от 48 кГц ≤ 3 %;
 - L (синус): основной тон 440 Гц ± 0.5 %, THD ≤ −70 дБ, THD+N ≤ −60 дБ, пик 0.99…1.0 FS;
 - R (пила): основной тон ± 0.5 %, H2/H1 = −6 ± 1 дБ;
 - оба канала **побитово** совпадают с моделью `synthmodel.nco`.
 
+`system/test_mono_core.py` (этап 1): частота каждой ноты ± 0.1 % (running status, Note On vel 0,
+байт realtime внутри сообщения, omni, pitch bend ±2 полутона), гейт на R, тишина после Note Off,
+All Notes Off и Stop, задержка MIDI → звук ≤ 3 мс.
+
+Юнит-тесты (`unit/`): `uart_rx` (рассогласование скорости ±3 %, ошибка стопа, помеха), `sync_fifo`,
+`midi_parser` (случайные потоки против `synthmodel.midi`), `pitch2inc` (побитово с `synthmodel.pitch`,
+точность < 0.02 цента), `dac_scale`.
+
 ### Формат стимулов MIDI
 
 Текст, строка — `<время_мс> <байт hex> [<байт hex> …]`, `#` — комментарий. Байты строки идут
 подряд с указанного времени (или сразу после предыдущего сообщения, если оно ещё передаётся).
-Пример — `sim/stimuli/stub_midi.txt`. Входы ВХ1/ВХ2 из файлов подключатся к тестбенчу вместе
+Пример — `sim/stimuli/stub_midi.txt`; тесты генерируют стимулы сами (`vsys.write_midi`). Входы ВХ1/ВХ2 из файлов подключатся к тестбенчу вместе
 с моделью АЦП (этап 6), сейчас у ядра этих входов нет.
 
 ## Тактирование

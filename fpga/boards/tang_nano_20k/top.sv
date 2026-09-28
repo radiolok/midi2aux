@@ -1,5 +1,5 @@
-// Tang Nano 20K top, stage 0: stub_core (sine/saw -> I2S, MIDI echo, blink).
-// LEDs (active low): 0 blink 1 Hz, 1 toggles per MIDI byte, 2 PLL locked, 3 DAC unmuted.
+// Tang Nano 20K top, stage 1: mono_core (MIDI -> one square voice, gate CV on OUT2).
+// LEDs (active low): 0 blink 1 Hz, 1 toggles per MIDI event, 2 gate, 3 PLL locked, 4 DAC unmuted.
 `default_nettype none
 
 module top (
@@ -33,11 +33,9 @@ module top (
         else      rst_sr <= {rst_sr[2:0], 1'b0};
     end
 
-    logic       led_blink, led_midi;
-    logic [7:0] midi_data;
-    logic       midi_valid;
+    logic led_blink, led_midi, led_gate;
 
-    stub_core #(
+    mono_core #(
         .SYS_CLK_HZ(SYS_CLK_HZ)
     ) u_core (
         .clk       (clk),
@@ -49,13 +47,10 @@ module top (
         .dac_xsmt  (dac_xsmt),
         .led_blink (led_blink),
         .led_midi  (led_midi),
-        .midi_data (midi_data),
-        .midi_valid(midi_valid)
+        .led_gate  (led_gate)
     );
 
-    assign led_n = ~{2'b00, dac_xsmt, pll_lock, led_midi, led_blink};
-
-    wire unused = &{1'b0, midi_data, midi_valid};
+    assign led_n = ~{1'b0, dac_xsmt, pll_lock, led_gate, led_midi, led_blink};
 
 endmodule
 

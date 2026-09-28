@@ -37,4 +37,5 @@ def test_saw_ramp():
 
 
 def test_generated_rom_up_to_date():
-    assert luts.DEFAULT_ROM.read_text() == luts.sine_rom_sv(18, 10), "run `make luts`"
+    for rel, gen in luts.GENERATED.items():
+        assert (luts.RTL_DIR / rel).read_text() == gen(), f"{rel}: run `make luts`"

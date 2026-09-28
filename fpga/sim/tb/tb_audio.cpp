@@ -1,4 +1,7 @@
-// Verilator testbench for stub_core (stage 0).
+// Generic Verilator testbench for audio cores with the common port set
+// (clk, rst, midi_rx, i2s_bck, i2s_lrck, i2s_din). Build with
+//   -DTOP_CLASS=Vmono_core -DTOP_HEADER='"Vmono_core.h"' -DSYS_CLK_HZ=... -DDATA_W=...
+//   -DMIDI_ECHO   the core exports midi_data/midi_valid: received bytes are checked
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
 // DAC would (sampling DIN on BCK rising edges) and checks the frame format:
@@ -6,15 +9,15 @@
 //   - 32 BCK per LRCK half, 64 per frame; constant BCK half-period;
 //   - bits below DATA_W in each 32-bit slot are zero.
 // Writes a stereo 24-bit WAV and a JSON summary; exit code 1 on format/MIDI errors.
-// Audio content (frequency, THD, bit-exactness) is checked by check_stub.py.
+// Audio content is checked by the pytest system tests (fpga/sim/system/).
 //
-// Usage: tb_stub_core --duration S --wav out.wav --json out.json [--midi stim.txt]
+// Usage: tb_audio --duration S --wav out.wav --json out.json [--midi stim.txt]
 //
 // MIDI stimulus format (text): "<time_ms> <hex byte> [<hex byte> ...]" per line,
 // '#' starts a comment. Bytes are sent back to back from time_ms (or after the
 // previous message, whichever is later).
 
-#include "Vstub_core.h"
+#include TOP_HEADER
 #include "verilated.h"
 
 #include <cinttypes>
@@ -28,6 +31,9 @@
 #include <string>
 #include <vector>
 
+#ifndef TOP_CLASS
+#error "define TOP_CLASS / TOP_HEADER"
+#endif
 #ifndef SYS_CLK_HZ
 #error "define SYS_CLK_HZ to match the RTL parameter"
 #endif
@@ -210,7 +216,7 @@ int main(int argc, char** argv) {
 
     auto ctx = std::make_unique<VerilatedContext>();
     ctx->commandArgs(argc, argv);
-    auto top = std::make_unique<Vstub_core>(ctx.get());
+    auto top = std::make_unique<TOP_CLASS>(ctx.get());
 
     const uint64_t total = (uint64_t)(duration * SYS_CLK_HZ);
     const uint64_t reset_cycles = 16;
@@ -248,7 +254,9 @@ int main(int argc, char** argv) {
             last_bck_edge = cyc;
         }
         if (rise) dec.rise(lrck, din, cyc);
+#ifdef MIDI_ECHO
         if (top->midi_valid) midi_rx_bytes.push_back(top->midi_data);
+#endif
         prev_bck = bck;
         prev_lrck = lrck;
         prev_din = din;
@@ -259,8 +267,12 @@ int main(int argc, char** argv) {
     size_t expected = 0;
     for (const auto& b : midi)
         if (b.start_cycle + (uint64_t)llround(10 * bit_cycles) + reset_cycles < total) ++expected;
+#ifdef MIDI_ECHO
     bool midi_ok = midi_rx_bytes.size() == expected;
     for (size_t i = 0; midi_ok && i < expected; ++i) midi_ok = midi_rx_bytes[i] == midi[i].value;
+#else
+    const bool midi_ok = true;
+#endif
 
     double fs = 0;
     const size_t nf = dec.frame_cycles.size();
@@ -286,13 +298,15 @@ int main(int argc, char** argv) {
             "  \"fs_hz\": %.6f,\n  \"frames\": %zu,\n  \"bck_half_cycles\": [%" PRIu64 ", %" PRIu64 "],\n"
             "  \"i2s_errors\": %" PRIu64 ",\n  \"pad_errors\": %" PRIu64 ",\n  \"timing_errors\": %" PRIu64 ",\n"
             "  \"midi_sent\": %zu,\n  \"midi_received\": %zu,\n  \"midi_ok\": %s,\n"
+            "  \"first_frame_cycle\": %" PRIu64 ",\n  \"reset_cycles\": %" PRIu64 ",\n"
             "  \"first_error\": \"%s\",\n  \"ok\": %s\n}\n",
             (int)SYS_CLK_HZ, DATA_W, duration, fs, nf, half_min, half_max, dec.errors, dec.pad_errors,
-            timing_errors, expected, midi_rx_bytes.size(), midi_ok ? "true" : "false", first.c_str(),
+            timing_errors, expected, midi_rx_bytes.size(), midi_ok ? "true" : "false",
+            nf ? dec.frame_cycles[0] : (uint64_t)0, reset_cycles, first.c_str(),
             ok ? "true" : "false");
     fclose(j);
 
-    printf("tb_stub_core: %zu frames, fs = %.3f Hz, I2S errors %" PRIu64 ", pad %" PRIu64 ", timing %" PRIu64
+    printf("tb_audio: %zu frames, fs = %.3f Hz, I2S errors %" PRIu64 ", pad %" PRIu64 ", timing %" PRIu64
            ", MIDI %zu/%zu %s -> %s\n",
            nf, fs, dec.errors, dec.pad_errors, timing_errors, midi_rx_bytes.size(), expected,
            midi_ok ? "ok" : "MISMATCH", ok ? "PASS" : "FAIL");
