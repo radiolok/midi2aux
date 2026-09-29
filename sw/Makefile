@@ -70,8 +70,19 @@ bootrom: $(BUILD)/boot.bin
 TEST_SRCS := $(wildcard test/test_*.c)
 TEST_BINS := $(patsubst test/%.c,$(BUILD)/host/%,$(TEST_SRCS))
 
-test: $(TEST_BINS)
-	@set -e; for t in $(TEST_BINS); do echo "== $$t"; $$t; done
+FATDIR := $(BUILD)/host/fat
+
+test: $(TEST_BINS) $(FATDIR)/fat16.img
+	@set -e; for t in $(TEST_BINS); do echo "== $$t"; $$t $(FATDIR); done
+	$(PYTHON) test/check_fat_out.py $(FATDIR)
+
+# disk images for test_fat (tools/fatimg.py: fragmented files, long-name entries)
+$(FATDIR)/fat16.img: tools/fatimg.py
+	@mkdir -p $(FATDIR)
+	$(PYTHON) -c "import random; random.seed(1); open('$(FATDIR)/big.bin', 'wb').write(bytes(random.randrange(256) for _ in range(3000)))"
+	printf 'hello\n' > $(FATDIR)/hello.txt
+	for b in 16 32; do $(PYTHON) tools/fatimg.py make $(FATDIR)/fat$$b.img $$b \
+		BIG.BIN=$(FATDIR)/big.bin HELLO.TXT=$(FATDIR)/hello.txt --frag --lfn; done
 
 $(BUILD)/host/test_%: test/test_%.c test/unity_lite.h $(HEADERS) $(wildcard lib/*.c fw/*.c)
 	@mkdir -p $(dir $@)
