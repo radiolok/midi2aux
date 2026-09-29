@@ -1,7 +1,7 @@
 /* Non-blocking log ring buffer: printing never stalls the MIDI -> sound path. */
 #include "lib.h"
 
-#define LOG_SIZE 2048u /* power of two */
+#define LOG_SIZE 512u /* power of two */
 
 static char ring[LOG_SIZE];
 static uint32_t head, tail; /* head: write, tail: read */

@@ -8,6 +8,7 @@
 //                 AVK inputs: --in1/--in2 SPEC (AD7091R pair), --sync SPEC (comparator > 0 V),
 //                 SPEC = off | dc:V | sine:F:A[:DC] | square:F:A[:DC] | saw:F:A[:DC];
 //                 external memory model on xm_*: --xmem-words N (default 65536), --xmem-latency N;
+//                 SD card: --sd-image FILE [--sd-sdsc] (card contents), --sd-dump FILE (after the run);
 //                 UART_BAUD must be defined
 //
 // Drives midi_rx from a MIDI stimulus file at 31250 baud, decodes the I2S pins as a
@@ -204,6 +205,8 @@ int main(int argc, char** argv) {
     std::string uart_out, uart_script, stop_on, flash_image, flash_dump, lcd_dump;
     std::string in_spec[2] = {"off", "off"}, sync_spec = "off";
     size_t xmem_words = 65536;
+    std::string sd_image, sd_dump;
+    int sd_sdhc = 1;
     int xmem_latency = 3;
     uint32_t flash_image_off = 0, flash_dump_off = 0, flash_dump_len = 0;
     for (int i = 1; i < argc; ++i) {
@@ -228,6 +231,9 @@ int main(int argc, char** argv) {
         else if (a == "--sync") sync_spec = next();
         else if (a == "--xmem-words") xmem_words = strtoul(next().c_str(), nullptr, 0);
         else if (a == "--xmem-latency") xmem_latency = atoi(next().c_str());
+        else if (a == "--sd-image") sd_image = next();
+        else if (a == "--sd-dump") sd_dump = next();
+        else if (a == "--sd-sdsc") sd_sdhc = 0;
         else if (a == "--flash-image") {  // path@offset
             std::string v = next();
             size_t at = v.find('@');
@@ -275,6 +281,11 @@ int main(int argc, char** argv) {
     Ad7091rPair adc;
     AnalogSource sync_src;
     ExtMemory xmem(xmem_words);
+    SdCardSpi sdcard;
+    if (!sd_image.empty() && !sdcard.load(sd_image, sd_sdhc)) {
+        fprintf(stderr, "cannot read %s\n", sd_image.c_str());
+        return 2;
+    }
     xmem.max_lat = xmem_latency;
     for (int i = 0; i < 2; ++i)
         if (!adc.src[i].parse(in_spec[i])) {
@@ -308,6 +319,7 @@ int main(int argc, char** argv) {
     top->uart_rx = 1;
     top->btn = 0;
     top->flash_miso = 1;
+    top->sd_miso = 1;
     top->pot_miso = 1;
     top->enc_a = top->enc_b = top->enc_sw = 0xF;
     top->adc_sdo1 = top->adc_sdo2 = 0;
@@ -328,6 +340,7 @@ int main(int argc, char** argv) {
         now = cyc;
         top->uart_rx = host.step(cyc, mon.text);
         top->flash_miso = flash.step(top->flash_sck, top->flash_mosi, top->flash_cs_n);
+        top->sd_miso = sdcard.step(top->sd_sck, top->sd_mosi, top->sd_cs_n);
         top->pot_miso = pots.step(top->pot_sck, top->pot_mosi, top->pot_cs_n);
         enc.step(cyc);
         top->enc_a = enc.a;
@@ -412,6 +425,8 @@ int main(int argc, char** argv) {
     }
     if (!flash_dump.empty()) flash.dump(flash_dump, flash_dump_off, flash_dump_len);
     if (!lcd_dump.empty()) lcd.dump(lcd_dump);
+    if (!sd_dump.empty() && sdcard.present) sdcard.dump(sd_dump);
+    if (sdcard.present && sdcard.card.errors) dec.error("SD protocol errors");
     std::string soc_error;
     if (trapped) soc_error = "CPU trap at cycle " + std::to_string(cyc);
     else if (!host.done()) soc_error = "UART script stuck at line " + std::to_string(host.line());

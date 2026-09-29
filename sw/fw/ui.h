@@ -1,4 +1,5 @@
 /* Panel UI: menu pages of three parameters (encoders PAR1..PAR3), page selection (encoder MENU),
+ * presets page: button PAR1 loads, PAR2 saves preset P_PRESET (ui.request, done by the caller);
  * eight fixed potentiometers (a knob takes over its parameter once moved), a status line. Draws through disp.h; inputs are passed in,
  * so the logic runs on the host in tests. */
 #ifndef UI_H
@@ -34,13 +35,17 @@ struct ui {
     uint32_t status_until;     /* ms: pot popup shown until then */
     struct ui_cell cell[UI_ROWS][UI_COLS];
     int ndirty;
+    int request;               /* UI_REQ_*: preset load / save asked on the presets page */
 };
+
+enum { UI_REQ_NONE, UI_REQ_LOAD, UI_REQ_SAVE };
 
 extern const int ui_num_pages;
 
 void ui_init(struct ui *u, struct synth *s);
 void ui_update(struct ui *u, const struct ui_input *in, uint32_t now_ms);
 void ui_status(struct ui *u, const char *text);
+void ui_refresh(struct ui *u); /* redraw the page (parameters changed elsewhere, e.g. a preset) */
 #define UI_POLL_GLYPHS 2 /* cells drawn per ui_poll call at most */
 void ui_poll(struct ui *u);                             /* draw changed cells, never waits */
 void ui_row_text(const struct ui *u, int r, char *buf, int n); /* UTF-8 text of a row */

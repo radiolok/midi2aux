@@ -39,6 +39,7 @@ static const struct page pages[] = {
     {"РЕВЕРБЕРАЦИЯ", {P_REV_SRC, P_REV_ROOM, P_REV_DAMP}},
     {"РЕВЕРБ., СИНХР. ГЕН.", {P_REV_LVL, P_HSYNC, P_FOLLOW_SRC}},
     {"ДЕТЕКТОР, ВЫХ2", {P_FOLLOW_ATK, P_FOLLOW_REL, P_OUT2_SRC}},
+    {"ПРЕСЕТЫ", {P_PRESET, P_MASTER, P_FX_MIX}},
 };
 const int ui_num_pages = sizeof pages / sizeof pages[0];
 
@@ -185,6 +186,8 @@ void ui_init(struct ui *u, struct synth *s)
     draw_page(u);
 }
 
+void ui_refresh(struct ui *u) { draw_page(u); }
+
 void ui_update(struct ui *u, const struct ui_input *in, uint32_t now_ms)
 {
     int16_t d[4];
@@ -197,6 +200,8 @@ void ui_update(struct ui *u, const struct ui_input *in, uint32_t now_ms)
         u->page = ((p % ui_num_pages) + ui_num_pages) % ui_num_pages;
         draw_page(u);
     }
+    if (pages[u->page].p[0] == P_PRESET && (in->pressed & 6))
+        u->request = (in->pressed & 2) ? UI_REQ_LOAD : UI_REQ_SAVE;
     for (int k = 0; k < 3; k++) {
         if (!d[ENC_PAR1 + k])
             continue;

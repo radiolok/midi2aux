@@ -4,10 +4,50 @@
 #include "lib.h"
 #include "console.h"
 #include "disp.h"
+#include "storage.h"
 #include "synth.h"
 
 static struct synth synth;
 static struct ui ui;
+static struct storage storage;
+
+/* SD card on SPI block 11 */
+#define SPI_SD 11
+static uint8_t sd_xfer(void *ctx, uint8_t b)
+{
+    (void)ctx;
+    SPI_DATA(SPI_SD) = b;
+    while (SPI_STATUS(SPI_SD) & 1u)
+        ;
+    return (uint8_t)SPI_DATA(SPI_SD);
+}
+static void sd_select(void *ctx, int on)
+{
+    (void)ctx;
+    SPI_CS(SPI_SD) = (uint32_t)on;
+}
+static void sd_speed(void *ctx, int fast)
+{
+    (void)ctx;
+    SPI_DIV(SPI_SD) = fast ? 2u : SYSINFO_SYS_CLK / 800000u; /* 16.5 MHz / 400 kHz at 99 MHz */
+}
+static const struct sd sd_hw = {sd_xfer, sd_select, sd_speed, 0, 0, 0};
+
+static void preset_request(void)
+{
+    char line[32];
+    int n = (int)synth.p.v[P_PRESET], load = ui.request == UI_REQ_LOAD;
+    int r = load ? storage_load(&storage, &synth, n) : storage_save(&storage, &synth, n);
+    ui.request = UI_REQ_NONE;
+    if (r < 0)
+        xsnprintf(line, sizeof line, "Пресет %d: ошибка %d", n, r);
+    else
+        xsnprintf(line, sizeof line, load ? "Пресет %d загружен" : "Пресет %d записан", n);
+    log_printf("preset %d %s %d\n", n, load ? "load" : "save", r);
+    if (load && r >= 0)
+        ui_refresh(&ui);
+    ui_status(&ui, line);
+}
 
 static const char *const ev_names[8] = {"note_off", "note_on", "poly_at", "cc",
                                         "program", "chan_at", "bend", "system"};
@@ -76,10 +116,16 @@ int main(void)
     for (int k = 0; k < 4; k++) /* counters keep running across a firmware reload */
         ui.enc_prev[k] = (int16_t)ENC_COUNT(k);
     console_init(&synth, &ui);
+    console_set_storage(&storage, sd_hw);
 
     log_printf("AVK6 synth fw, hw version %08x\n", (unsigned)SYSINFO_VERSION);
     log_printf("sys_clk %u Hz, fs %u.%03u Hz, RAM %u bytes, %u voices\n", (unsigned)fs.sys_clk,
          (unsigned)(fs_mhz / 1000), (unsigned)(fs_mhz % 1000), (unsigned)SYSINFO_RAM_BYTES, (unsigned)nv);
+    int sd = storage_mount(&storage, sd_hw);
+    if (sd)
+        log_printf("sd: none (%d)\n", sd);
+    else
+        log_printf("sd: fat%d\n", storage.fat.fat32 ? 32 : 16);
     log_printf("READY\n");
 
     uint32_t t_led = cycles(), t_panel = cycles(), ms = 0;
@@ -93,6 +139,8 @@ int main(void)
             MIDI_CTRL = 1;
         }
         avk_poll(&synth);
+        if (ui.request)
+            preset_request();
         log_poll();
         ui_poll(&ui);
         poll_uart();

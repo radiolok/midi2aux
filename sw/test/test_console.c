@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "unity_lite.h"
@@ -9,6 +10,12 @@
 #include "../fw/avk.c"
 #include "../fw/voice_alloc.c"
 #include "../lib/xprintf.c"
+#include "../fw/fat.c"
+#include "../fw/preset.c"
+#include "../fw/sd.c"
+#include "../fw/storage.c"
+#include "../lib/crc32.c"
+#include "../../fpga/sim/models/sd_card_model.h"
 
 #include "fake_regs.h"
 void uart_putc(char c) { (void)c; }
@@ -115,6 +122,62 @@ static void test_mem(void)
     CHECK(strstr(out, "error") != 0);
 }
 
+/* SD card: the model with a FAT16 image; flash: an array */
+static uint8_t flash[1 << 20];
+void flash_erase_4k(int spi, uint32_t addr) { (void)spi; memset(flash + (addr & ~4095u), 0xFF, 4096); }
+void flash_program(int spi, uint32_t addr, const void *src, size_t len) { (void)spi; memcpy(flash + addr, src, len); }
+void flash_read(int spi, uint32_t addr, void *dst, size_t len) { (void)spi; memcpy(dst, flash + addr, len); }
+static struct sd_card card;
+static int cs;
+static uint8_t bx(void *ctx, uint8_t b) { (void)ctx; return cs ? sd_card_xfer(&card, b) : 0xFF; }
+static void bsel(void *ctx, int on) { (void)ctx; if (!on) sd_card_deselect(&card); cs = on; }
+static void bspeed(void *ctx, int fast) { (void)ctx; (void)fast; }
+static const char *img_dir = ".";
+
+static void test_storage_commands(void)
+{
+    static struct storage st;
+    char path[512];
+    size_t n = 0;
+    snprintf(path, sizeof path, "%s/fat16.img", img_dir);
+    FILE *fp = fopen(path, "rb");
+    CHECK(fp != 0);
+    if (!fp)
+        return;
+    uint8_t *img = malloc(40u << 20);
+    n = fread(img, 1, 40u << 20, fp);
+    fclose(fp);
+    sd_card_init(&card, img, n, 1);
+    synth_init(&s, 4, FS);
+    console_init(&s, 0);
+    feed("ls\n");
+    CHECK(strstr(out, "error") != 0); /* no storage yet */
+    console_set_storage(&st, (struct sd){bx, bsel, bspeed, 0, 0, 0});
+    feed("ls\n");
+    CHECK(strstr(out, "error: ls") != 0); /* not mounted */
+    feed("sd\n");
+    CHECK_STR(out, "ok sd fat16\n");
+    feed("set cutoff 777\n");
+    feed("save 3\n");
+    CHECK_STR(out, "ok save 3\n");
+    feed("save 100\n");
+    CHECK(strstr(out, "error") != 0);
+    feed("ls\n");
+    char want[128];
+    snprintf(want, sizeof want, "file BIG.BIN 3000\nfile HELLO.TXT 6\nfile PRESET03.BIN %d\nok ls\n", PRESET_MAX_BYTES);
+    CHECK_STR(out, want);
+    feed("set cutoff 5000\n");
+    feed("load 3\n");
+    CHECK_STR(out, "ok load 3\n");
+    CHECK_EQ(s.p.v[P_CUTOFF], 777);
+    feed("load 4\n");
+    CHECK_STR(out, "error: load -3\n");
+    feed("fwupdate\n");
+    CHECK_STR(out, "error: fwupdate -3\n");
+    CHECK_EQ(card.errors, 0);
+    free(img);
+}
+
 static void test_long_line_truncated(void)
 {
     console_init(&s, 0);
@@ -124,8 +187,11 @@ static void test_long_line_truncated(void)
     CHECK(strstr(out, "route") != 0);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+    if (argc > 1)
+        img_dir = argv[1];
+    RUN(test_storage_commands);
     RUN(test_avk);
     RUN(test_mem);
     RUN(test_set_get);

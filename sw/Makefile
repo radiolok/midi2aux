@@ -24,8 +24,9 @@ CFLAGS  := $(ARCH) -Os -g -std=c11 -ffreestanding -fno-builtin -ffunction-sectio
            -Wall -Wextra -Werror -Iinclude -Ifw
 LDFLAGS := $(ARCH) -nostdlib -nostartfiles -Wl,--gc-sections -Wl,--no-warn-rwx-segments
 
-LIB_SRCS  := lib/uart.c lib/xprintf.c lib/crc32.c lib/string.c lib/flash.c lib/log.c
+LIB_SRCS  := lib/uart.c lib/xprintf.c lib/crc32.c lib/string.c lib/flash.c lib/log.c lib/div64.c
 FW_SRCS   := fw/start.S fw/main.c fw/hw.c fw/synth.c fw/params.c fw/patch.c fw/console.c fw/voice_alloc.c fw/avk.c \
+             fw/fat.c fw/sd.c fw/preset.c fw/storage.c \
              fw/ui.c fw/lcd.c fw/font.c fw/font8x16.c $(LIB_SRCS)
 BOOT_SRCS := boot/start.S boot/boot.c $(filter-out lib/log.c,$(LIB_SRCS))
 
@@ -84,7 +85,8 @@ $(FATDIR)/fat16.img: tools/fatimg.py
 	for b in 16 32; do $(PYTHON) tools/fatimg.py make $(FATDIR)/fat$$b.img $$b \
 		BIG.BIN=$(FATDIR)/big.bin HELLO.TXT=$(FATDIR)/hello.txt --frag --lfn; done
 
-$(BUILD)/host/test_%: test/test_%.c test/unity_lite.h $(HEADERS) $(wildcard lib/*.c fw/*.c)
+$(BUILD)/host/test_%: test/test_%.c test/unity_lite.h $(HEADERS) $(wildcard lib/*.c fw/*.c) \
+		../fpga/sim/models/sd_card_model.h
 	@mkdir -p $(dir $@)
 	$(HOSTCC) -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -DHOST_TEST \
 		-Iinclude -Ifw -Itest $< -o $@ -lm

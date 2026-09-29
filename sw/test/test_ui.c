@@ -96,7 +96,7 @@ static void setup(void)
 static void test_first_page(void)
 {
     setup();
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/21 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/22 >");
     CHECK_STR(row(2), "1 ГЕН1 форма               saw");
     CHECK_STR(row(4), "2 ГЕН2 форма               saw");
     CHECK_STR(row(6), "3 ГЕН2 расстр.            7 ct");
@@ -112,14 +112,14 @@ static void test_page_navigation(void)
     setup();
     in.enc[ENC_MENU] = 3;
     update(10);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/21 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/22 >");
     in.enc[ENC_MENU] = -1; /* 4 back: wraps to the last page */
     update(20);
-    CHECK_STR(row(0), "< ДЕТЕКТОР, ВЫХ2  21/21 >");
+    CHECK_STR(row(0), "< ПРЕСЕТЫ  22/22 >");
     in.pressed = 1; /* MENU button: first page */
     update(30);
     in.pressed = 0;
-    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/21 >");
+    CHECK_STR(row(0), "< ГЕНЕРАТОРЫ  1/22 >");
 }
 
 static void test_edit_parameters(void)
@@ -148,11 +148,11 @@ static void test_drawing_resumes_when_fifo_frees(void)
     update(10);
     CHECK_EQ(glyph_calls >= 5, 1);
     CHECK(u.ndirty > 0);
-    CHECK(strcmp(row(0), "< ФИЛЬТР  4/21 >") != 0); /* not finished yet */
+    CHECK(strcmp(row(0), "< ФИЛЬТР  4/22 >") != 0); /* not finished yet */
     fifo_room = 1 << 30;
     poll_all();
     CHECK_EQ(u.ndirty, 0);
-    CHECK_STR(row(0), "< ФИЛЬТР  4/21 >");
+    CHECK_STR(row(0), "< ФИЛЬТР  4/22 >");
 }
 
 static void test_steps(void)
@@ -200,8 +200,28 @@ static void test_pot_updates_visible_param(void)
     CHECK_STR(row(6), "3 FX MIX" "                   0 %");
 }
 
+static void test_preset_buttons(void)
+{
+    setup();
+    in.pressed = 2; /* PAR1 button outside the presets page: nothing */
+    update(10);
+    in.pressed = 0;
+    CHECK_EQ(u.request, UI_REQ_NONE);
+    in.enc[ENC_MENU] = -1; /* last page: presets */
+    update(20);
+    CHECK_STR(row(0), "< ПРЕСЕТЫ  22/22 >");
+    in.pressed = 2;
+    update(30);
+    CHECK_EQ(u.request, UI_REQ_LOAD);
+    in.pressed = 4;
+    update(40);
+    in.pressed = 0;
+    CHECK_EQ(u.request, UI_REQ_SAVE);
+}
+
 int main(void)
 {
+    RUN(test_preset_buttons);
     RUN(test_first_page);
     RUN(test_page_navigation);
     RUN(test_edit_parameters);

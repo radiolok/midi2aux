@@ -6,6 +6,7 @@
 //   0x1000_0000  peripherals, 0x100 per block:
 //                0 UART  1 TIMER  2 GPIO  3 MIDI  4 SYSINFO  5 SPI flash
 //                6 POTS (MCP3208)  7 ENC (encoders)  8 LCD (ST7789)  9 SYNC  10 ADC (IN1/IN2)
+//                11 SD card SPI (starts at ~400 kHz for the card init)
 //   0x2000_0000  voice engine (voice/voice_engine.sv): voices, then globals at +0x1_0000
 //   0x2002_0000  modulation unit (voice/mod_unit.sv): LFOs, modulation matrix
 //   0x3000_0000  signal bus, output mixer, slots (avk/fx_bus.sv): OUT (L), OUT2 (R)
@@ -41,6 +42,11 @@ module synth_core #(
     output logic       flash_mosi,
     input  wire        flash_miso,
     output logic       flash_cs_n,
+    // SD card (SPI mode)
+    output logic       sd_sck,
+    output logic       sd_mosi,
+    input  wire        sd_miso,
+    output logic       sd_cs_n,
     // panel: MCP3208 (potentiometers), encoders, ST7789 display
     output logic       pot_sck,
     output logic       pot_mosi,
@@ -83,7 +89,7 @@ module synth_core #(
 
     localparam int BCK_HALF = (SYS_CLK_HZ + 64 * FS_HZ) / (128 * FS_HZ);
     localparam int RAM_AW   = $clog2(RAM_BYTES / 4);
-    localparam logic [31:0] VERSION = 32'h0007_0000;  // stage 7
+    localparam logic [31:0] VERSION = 32'h0009_0000;  // stage 9
 
     // ------------------------------------------------------------------ CPU
     logic        mem_valid, mem_instr, mem_ready;
@@ -259,7 +265,12 @@ module synth_core #(
         .sdo1(adc_sdo1), .sdo2(adc_sdo2), .in1(in1), .in2(in2)
     );
 
-    for (genvar i = 11; i < 16; i++) begin : g_no_periph
+    spi_master #(.NCS(1), .DIV_RST(SYS_CLK_HZ / 800_000)) u_sd (
+        .clk(clk), .rst(rst), .req(preq[11]), .we(we), .addr(reg_addr), .wdata(mem_wdata),
+        .rdata(prd[11]), .sck(sd_sck), .mosi(sd_mosi), .miso(sd_miso), .cs_n(sd_cs_n)
+    );
+
+    for (genvar i = 12; i < 16; i++) begin : g_no_periph
         assign prd[i] = '0;
     end
 
@@ -342,7 +353,7 @@ module synth_core #(
         else     dac_xsmt <= 1'b1;
     end
 
-    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:11], s0_valid, engine_busy};
+    wire unused = &{1'b0, mem_instr, gpio_out[7:4], preq[15:12], s0_valid, engine_busy};
 
 endmodule
 

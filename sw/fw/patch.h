@@ -26,13 +26,14 @@ enum param_id {
     P_CHO_SRC, P_CHO_BASE, P_CHO_DEPTH, P_CHO_RATE, P_CHO_FB, P_CHO_LVL,
     P_REV_SRC, P_REV_ROOM, P_REV_DAMP, P_REV_LVL,
     P_HSYNC, P_FOLLOW_SRC, P_FOLLOW_ATK, P_FOLLOW_REL,
+    P_PRESET,
     P_COUNT
 };
 
 struct param_desc {
     const char *name;   /* console name (ASCII) */
     const char *label;  /* menu label (UTF-8, Russian) */
-    int32_t min, max, def;
+    int16_t min, max, def;
     uint8_t unit;
     const char *const *enum_names; /* U_ENUM */
 };

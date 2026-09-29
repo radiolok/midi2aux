@@ -62,3 +62,6 @@ IO_PORT "flash_cs_n" IO_TYPE=LVCMOS33 DRIVE=8;
 
 // AVK link (stage 6): 2x AD7091R (adc_convst_n, adc_cs_n, adc_sclk shared; adc_sdo1/adc_sdo2),
 // SYNC comparator output (sync_in). NOT ASSIGNED YET (HO-01), same as the panel.
+
+// SD card (stage 9): sd_sck, sd_mosi, sd_miso (needs PULL_MODE=UP), sd_cs_n. NOT ASSIGNED YET (HO-01);
+// on the 20K the on-board TF slot, on the 9K a card module on free pins.

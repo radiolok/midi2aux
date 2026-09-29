@@ -466,3 +466,57 @@ struct ExtMemory {
         acked = true;
     }
 };
+
+// SD card on the SD SPI pins: bit-level SPI mode 0 around the byte model
+// (fpga/sim/models/sd_card_model.h); the card image is a file (--sd-image), written back with --sd-dump.
+#include "../models/sd_card_model.h"
+
+struct SdCardSpi {
+    std::vector<uint8_t> img;
+    struct sd_card card;
+    bool present = false;
+    int prev_sck = 0, prev_cs = 1, nbit = 0, miso = 1;
+    uint8_t in = 0, out = 0xFF;
+
+    bool load(const std::string& path, int sdhc) {
+        std::ifstream f(path, std::ios::binary);
+        if (!f) return false;
+        img.assign(std::istreambuf_iterator<char>(f), {});
+        sd_card_init(&card, img.data(), img.size(), sdhc);
+        present = true;
+        return true;
+    }
+    void dump(const std::string& path) const {
+        std::ofstream(path, std::ios::binary).write((const char*)img.data(), (std::streamsize)img.size());
+    }
+    // byte the card sends in the next exchange (the model dequeues the same byte in sd_card_xfer)
+    uint8_t peek() const {
+        if (card.wr_state == 2 || card.wr_state == 3) return 0xFF;
+        return card.pout < card.nout ? card.out[card.pout] : 0xFF;
+    }
+    int step(int sck, int mosi, int cs_n) {
+        if (!present) return 1;
+        if (!prev_cs && cs_n) sd_card_deselect(&card);
+        if (!cs_n) {
+            if (prev_cs || (prev_sck && !sck && nbit == 0)) {  // byte boundary: MSB out first
+                out = peek();
+                miso = out >> 7 & 1;
+                if (prev_cs) nbit = 0;
+            } else if (prev_sck && !sck) {                      // mode 0: change on the falling edge
+                miso = out >> (7 - nbit) & 1;
+            }
+            if (!prev_sck && sck) {                             // sample on the rising edge
+                in = (uint8_t)(in << 1 | (mosi & 1));
+                if (++nbit == 8) {
+                    nbit = 0;
+                    sd_card_xfer(&card, in);
+                }
+            }
+        } else {
+            miso = 1;
+        }
+        prev_sck = sck;
+        prev_cs = cs_n;
+        return miso;
+    }
+};

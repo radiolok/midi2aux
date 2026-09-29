@@ -5,6 +5,20 @@
 
 static struct synth *syn;
 static struct ui *ui;
+static struct storage *store;
+static struct sd sd_hw;
+
+void console_set_storage(struct storage *st, struct sd sd)
+{
+    store = st;
+    sd_hw = sd;
+}
+
+static void ls_cb(void *ctx, const char *name, uint32_t size)
+{
+    (void)ctx;
+    log_printf("file %s %u\n", name, (unsigned)size);
+}
 static char line[64];
 static int len;
 
@@ -137,6 +151,29 @@ void console_exec(char *l)
             hw_write(addr, (uint32_t)a[1]);
         }
         log_printf("ok mem %d = %d\n", (int)a[0], (int)hw_read(addr));
+    } else if (!strcmp(cmd, "sd") && store) {
+        int r = storage_mount(store, sd_hw);
+        if (r)
+            log_printf("error: sd %d\n", r);
+        else
+            log_printf("ok sd fat%d\n", store->fat.fat32 ? 32 : 16);
+    } else if (!strcmp(cmd, "ls") && store) {
+        int r = storage_list(store, ls_cb, 0);
+        log_printf(r ? "error: ls %d\n" : "ok ls\n", r);
+    } else if ((!strcmp(cmd, "save") || !strcmp(cmd, "load")) && store && argc == 2 && parse_int(argv[1], &a[0]) &&
+               a[0] >= 0 && a[0] <= 99) {
+        int r = cmd[0] == 's' ? storage_save(store, syn, (int)a[0]) : storage_load(store, syn, (int)a[0]);
+        if (r < 0)
+            log_printf("error: %s %d\n", cmd, r);
+        else
+            log_printf("ok %s %d\n", cmd, (int)a[0]);
+    } else if (!strcmp(cmd, "fwupdate") && store) {
+        int32_t r = storage_fw_update(store, SPI_FLASH, hw_read(PERIPH_ADDR(4, 0x1C)),
+                                      hw_read(PERIPH_ADDR(4, 0x10)) - 2048u);
+        if (r < 0)
+            log_printf("error: fwupdate %d\n", (int)r);
+        else
+            log_printf("ok fwupdate %d\n", (int)r);
     } else if (!strcmp(cmd, "screen") && ui) {
         char row[UI_COLS * 3 + 1];
         for (int r = 0; r < UI_ROWS; r++) {
@@ -146,7 +183,8 @@ void console_exec(char *l)
         log_printf("screen end\n");
     } else if (!strcmp(cmd, "help")) {
         log_printf("set <param> <v> | get <param> | list | route <k> <src> <via> <dst> <depth> | "
-                   "note <n> [vel] | off <n> | screen | avk | cal <1|2> zero|<mV> | mem <word> [value]\n");
+                   "note <n> [vel] | off <n> | screen | avk | cal <1|2> zero|<mV> | mem <word> [value] | "
+                   "sd | ls | save <n> | load <n> | fwupdate\n");
     } else {
         log_printf("error: unknown command, try help\n");
     }
