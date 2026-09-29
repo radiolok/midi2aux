@@ -6,7 +6,9 @@ static const char *const wave_names[] = {"saw", "square", "tri", "sine", 0};
 static const char *const fmode_names[] = {"lp", "bp", "hp", 0};
 static const char *const lfo_names[] = {"sine", "tri", "saw", "square", "random", "sawdn", 0};
 static const char *const bus_names[] = {"synth", "in1", "in2", "lfo1", "lfo2", "sync", "env", "gate",
-                                        "slot1", "slot2", "slot3", "slot4", 0};
+                                        "slot1", "slot2", "slot3", "slot4", "pitch", 0};
+static const char *const hsync_names[] = {"off", "osc1", "osc2", "both", 0};
+static const char *const in_names[] = {"in1", "in2", 0};
 static const char *const onoff_names[] = {"off", "on", 0};
 static const char *const op_names[] = {"off", "mul", "div", "abs", "add", "sub", "min", "max", "mod", "axpb", 0};
 static const char *const sync_names[] = {"off", "lfo", "note", 0};
@@ -44,7 +46,7 @@ const struct param_desc param_table[P_COUNT] = {
     [P_FX_MIX]    = {"fxmix", "FX MIX", 0, 100, 50, U_PCT, 0},
     [P_IN1_MIX]   = {"in1mix", "ВХ1 → ВЫХ", -200, 200, 0, U_PCT, 0},
     [P_IN2_MIX]   = {"in2mix", "ВХ2 → ВЫХ", -200, 200, 0, U_PCT, 0},
-    [P_OUT2_SRC]  = {"out2src", "ВЫХ2 сигнал", 0, 11, 3, U_ENUM, bus_names},
+    [P_OUT2_SRC]  = {"out2src", "ВЫХ2 сигнал", 0, 12, 3, U_ENUM, bus_names},
     [P_OUT2_GAIN] = {"out2gain", "ВЫХ2 уровень", -200, 200, 100, U_PCT, 0},
     [P_SYNC_MODE] = {"syncmode", "SYNC режим", 0, 2, 0, U_ENUM, sync_names},
     [P_SYNC_NOTE] = {"syncnote", "SYNC нота", 0, 127, 60, U_NONE, 0},
@@ -65,6 +67,20 @@ const struct param_desc param_table[P_COUNT] = {
     [P_DLY2_FB]   = {"dly2fb", "ЗАДЕРЖКА2 повтор", -99, 99, 40, U_PCT, 0},
     [P_DLY2_LVL]  = {"dly2lvl", "ЗАДЕРЖКА2 уровень", -200, 200, 0, U_PCT, 0},
     [P_DLY_SYNC]  = {"dlysync", "Задержка = СИНХР", 0, 1, 0, U_ENUM, onoff_names},
+    [P_CHO_SRC]   = {"chosrc", "ХОРУС вход", 0, 11, 0, U_ENUM, bus_names},
+    [P_CHO_BASE]  = {"chobase", "ХОРУС задержка", 1, 200, 70, U_MS10, 0},
+    [P_CHO_DEPTH] = {"chodepth", "ХОРУС глубина", 0, 200, 30, U_MS10, 0},
+    [P_CHO_RATE]  = {"chorate", "ХОРУС частота", 1, 1000, 50, U_HZ100, 0},
+    [P_CHO_FB]    = {"chofb", "ХОРУС повтор", -99, 99, 0, U_PCT, 0},
+    [P_CHO_LVL]   = {"cholvl", "ХОРУС уровень", -200, 200, 0, U_PCT, 0},
+    [P_REV_SRC]   = {"revsrc", "РЕВЕРБ. вход", 0, 11, 0, U_ENUM, bus_names},
+    [P_REV_ROOM]  = {"revroom", "РЕВЕРБ. размер", 0, 100, 50, U_PCT, 0},
+    [P_REV_DAMP]  = {"revdamp", "РЕВЕРБ. глушение", 0, 100, 50, U_PCT, 0},
+    [P_REV_LVL]   = {"revlvl", "РЕВЕРБ. уровень", -200, 200, 0, U_PCT, 0},
+    [P_HSYNC]     = {"hsync", "Жёсткая синхр.", 0, 3, 0, U_ENUM, hsync_names},
+    [P_FOLLOW_SRC] = {"follsrc", "Детектор вход", 0, 1, 0, U_ENUM, in_names},
+    [P_FOLLOW_ATK] = {"follatk", "Детектор атака", 1, 1000, 5, U_MS, 0},
+    [P_FOLLOW_REL] = {"follrel", "Детектор спад", 1, 5000, 100, U_MS, 0},
 };
 
 void patch_defaults(struct patch *p)
@@ -111,6 +127,9 @@ void param_format(int id, int32_t v, char *buf, int n)
         break;
     case U_SEMI:
         xsnprintf(buf, (size_t)n, "%d st", (int)v);
+        break;
+    case U_MS10:
+        xsnprintf(buf, (size_t)n, "%d.%d ms", (int)(v / 10), (int)(v % 10));
         break;
     case U_Q100:
         xsnprintf(buf, (size_t)n, "%d.%02d", (int)(v / 100), (int)(v % 100));

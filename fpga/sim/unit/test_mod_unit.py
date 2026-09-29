@@ -41,6 +41,9 @@ async def configure(dut, m, rng):
     await wr(dut, 0x10, m.modwheel)
     await wr(dut, 0x14, m.am_base)
     await wr(dut, 0x18, m.aux)
+    m.follow_src, m.follow_atk, m.follow_rel = rng.randrange(2), rng.randrange(1 << 16), rng.randrange(1 << 16)
+    for addr, v in ((0x20, m.follow_src), (0x24, m.follow_atk), (0x28, m.follow_rel)):
+        await wr(dut, addr, v)
     for k in range(8):
         r = Route(rng.randrange(12), rng.choice([0, 0, rng.randrange(12)]), rng.randrange(5),
                   rng.randrange(-(1 << 23), 1 << 23))
@@ -62,7 +65,9 @@ async def bit_exact_random(dut):
         m_gate = gate
         await wr(dut, 0x1C, gate)
         for n in range(400):
-            i1, i2 = rng.randrange(-(1 << 17), 1 << 17), rng.randrange(-(1 << 17), 1 << 17)
+            i1, i2 = rng.randrange(-(1 << 17), 1 << 17), rng.choice([rng.randrange(-(1 << 17), 1 << 17), -(1 << 17)])
+            if scene % 2:  # slowly varying inputs: the follower tracks them
+                i1, i2 = (n * 331) % (1 << 17) - (1 << 16), -((n * 97) % (1 << 17))
             env, sy = rng.randrange(1 << 16), rng.randrange(2)
             se = int(rng.random() < 0.01)
             dut.in1.value, dut.in2.value, dut.env.value, dut.sync.value, dut.sync_edge.value = i1, i2, env, sy, se
@@ -78,6 +83,7 @@ async def bit_exact_random(dut):
             assert dut.lfo1.value.signed_integer == m.lfo_out[0]
             assert dut.lfo2.value.signed_integer == m.lfo_out[1]
     assert await rd(dut, 0x80) == m.lfo_out[0]
+    assert await rd(dut, 0x88) == m.follow
 
 
 def test_mod_unit():

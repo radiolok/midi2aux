@@ -131,6 +131,8 @@ static int note_on(struct synth *s, uint8_t note, uint8_t vel)
     if (rt)
         s->retrig[v] ^= 1;
     hw_write(SYNTH_REG(S_ENV_VOICE), (uint32_t)v);
+    if (pv[P_OUT2_SRC] == OUT2_PITCH)
+        hw_write(BUS_OUT2_DC, (uint32_t)avk_pitch_cv(note));
     gate(s, v, 1);
     return v;
 }

@@ -121,3 +121,17 @@ RTL: `mem/mem_arb.sv`, `mem/mem_bram.sv`, `mem/sdram_ctrl.sv`, `avk/slot_delay.s
 процессором через окно `0x4000_0000` одновременно с работой слотов.
 
 ![эхо](img/delay_echo.png)
+
+## Этап 8: хорус, реверберация, жёсткая синхронизация, детектор огибающей
+
+RTL: `avk/slot_chorus.sv`, `avk/slot_reverb.sv`; `voice/voice_engine.sv` — регистр HSYNC и вход
+`sync_edge`; `voice/mod_unit.sv` — детектор огибающей (источник 10). Юнит-тесты: слоты бит-в-бит
+(`unit/test_avk_bus.py::test_fx_bus_chorus_reverb`), жёсткая синхронизация в `unit/test_voice_engine.py`,
+детектор в `unit/test_mod_unit.py`.
+
+`system/test_synth_core_fx.py`: хвост реверберации затухает (без неё — тишина после ноты); хорус
+даёт биения уровня без смены высоты; генератор 440 Гц, синхронизированный СИНХР 100 Гц, повторяется
+каждые 10 мс и имеет спектр гармоник 100 Гц; ВХ1 → детектор → высота тона; ВЫХ2 = +1 В для ноты до
+второй октавы.
+
+![реверберация](img/fx_reverb.png)

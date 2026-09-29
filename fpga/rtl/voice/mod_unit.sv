@@ -5,7 +5,9 @@
 //   0x10 MODWHEEL Q2.16   0x14 AM_BASE Q2.16 (1.0: AM adds, 0: ring modulation)
 //   0x18 AUX Q2.16 (CPU source)   0x1C GATE bit0
 //   0x40 + 8k ROUTE_k {dst[10:8], via[7:4], src[3:0]}   0x44 + 8k DEPTH_k signed 24 bit
-//   R: 0x80 LFO1 value  0x84 LFO2 value
+//   0x20 FOLLOW_SRC (0 IN1, 1 IN2)  0x24 FOLLOW_ATK  0x28 FOLLOW_REL (Q0.16): envelope follower,
+//        source 10
+//   R: 0x80 LFO1 value  0x84 LFO2 value  0x88 FOLLOW value
 `default_nettype none
 
 module mod_unit (
@@ -40,7 +42,8 @@ module mod_unit (
     logic [2:0]         wave [2];
     logic [1:0]         sreset;
     logic signed [17:0] modwheel, am_base, aux;
-    logic               gate;
+    logic               gate, fsrc;
+    logic [15:0]        fatk, frel;
     logic [3:0]         r_src [8];
     logic [3:0]         r_via [8];
     logic [2:0]         r_dst [8];
@@ -49,7 +52,7 @@ module mod_unit (
     always_ff @(posedge clk) begin
         if (rst) begin
             inc[0] <= '0; inc[1] <= '0; wave[0] <= '0; wave[1] <= '0; sreset <= '0;
-            modwheel <= '0; am_base <= ONE; aux <= '0; gate <= 1'b0;
+            modwheel <= '0; am_base <= ONE; aux <= '0; gate <= 1'b0; fsrc <= 1'b0; fatk <= '0; frel <= '0;
             for (int k = 0; k < 8; k++) begin
                 r_src[k] <= '0; r_via[k] <= '0; r_dst[k] <= '0; r_depth[k] <= '0;
             end
@@ -70,6 +73,9 @@ module mod_unit (
                 6'd5: am_base <= wdata[17:0];
                 6'd6: aux <= wdata[17:0];
                 6'd7: gate <= wdata[0];
+                6'd8: fsrc <= wdata[0];
+                6'd9: fatk <= wdata[15:0];
+                6'd10: frel <= wdata[15:0];
                 default: ;
             endcase
         end
@@ -80,6 +86,7 @@ module mod_unit (
             case (addr[7:2])
                 6'd32:   rdata <= 32'(lfo1);
                 6'd33:   rdata <= 32'(lfo2);
+                6'd34:   rdata <= 32'(follow);
                 default: rdata <= '0;
             endcase
         end
@@ -142,7 +149,8 @@ module mod_unit (
                                                   input logic signed [17:0] l2, input logic signed [17:0] mw,
                                                   input logic signed [17:0] i1, input logic signed [17:0] i2,
                                                   input logic sy, input logic signed [17:0] ev,
-                                                  input logic gt, input logic signed [17:0] ax);
+                                                  input logic gt, input logic signed [17:0] ax,
+                                                  input logic signed [17:0] fo);
         case (s)
             4'd1:    return l1;
             4'd2:    return l2;
@@ -153,6 +161,7 @@ module mod_unit (
             4'd7:    return ev;
             4'd8:    return gt ? ONE : '0;
             4'd9:    return ax;
+            4'd10:   return fo;
             default: return '0;
         endcase
     endfunction
@@ -169,16 +178,23 @@ module mod_unit (
         return x[22:0];
     endfunction
 
+    // envelope follower, updated at tick
+    logic signed [17:0] follow;
+    wire  signed [17:0] fin   = fsrc ? in2 : in1;
+    wire  signed [17:0] fabs  = fin == -18'sd131072 ? 18'sd131071 : (fin < 0 ? -fin : fin);
+    wire  signed [18:0] fdiff = 19'(fabs) - 19'(follow);
+    wire  signed [36:0] fprod = fdiff * $signed({1'b0, fabs > follow ? fatk : frel});
+
     // sources are sampled once per sample, at tick
     logic signed [17:0] in1_q, in2_q, env_q;
     logic               sync_q;
-    wire signed [17:0]  src_k = source(r_src[k], lfo1, lfo2, modwheel, in1_q, in2_q, sync_q, env_q, gate, aux);
-    wire signed [17:0]  via_k = source(r_via[k], lfo1, lfo2, modwheel, in1_q, in2_q, sync_q, env_q, gate, aux);
+    wire signed [17:0]  src_k = source(r_src[k], lfo1, lfo2, modwheel, in1_q, in2_q, sync_q, env_q, gate, aux, follow);
+    wire signed [17:0]  via_k = source(r_via[k], lfo1, lfo2, modwheel, in1_q, in2_q, sync_q, env_q, gate, aux, follow);
     wire signed [42:0]  am_sum = 43'(am_base) + acc[3];
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            ph[0] <= '0; ph[1] <= '0; rnd[0] <= '0; rnd[1] <= '0; rng <= 32'd1;
+            ph[0] <= '0; ph[1] <= '0; rnd[0] <= '0; rnd[1] <= '0; rng <= 32'd1; follow <= '0;
             state <= IDLE; k <= '0; sub <= '0;
             lfo1 <= '0; lfo2 <= '0;
             pm <= '0; cm <= '0; am <= ONE; pw <= '0;
@@ -193,6 +209,7 @@ module mod_unit (
                     rng    <= rng2;
                     in1_q  <= in1;
                     in2_q  <= in2;
+                    follow <= 18'(19'(follow) + 19'(fprod >>> 16));
                     sync_q <= sync;
                     env_q  <= env;
                     for (int d = 0; d < 5; d++) acc[d] <= '0;

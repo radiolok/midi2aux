@@ -64,3 +64,8 @@ python3 sw/tools/load.py /dev/ttyUSB1 build/sw/fw.bin --flash   # и сохра�
 Задержки (слоты DELAY): `dly1src`, `dly1time` (мс), `dly1fb` (повтор, %), `dly1lvl` (уровень в ВЫХ), то же `dly2*`;
 `dlysync on` — время задержки равно периоду СИНХР. `mem <слово> [значение]` — чтение/запись внешней памяти
 (проверка SDRAM на плате).
+
+Хорус/флэнжер: `chosrc`, `chobase`, `chodepth` (0.1 мс), `chorate`, `chofb`, `cholvl`. Реверберация: `revsrc`,
+`revroom`, `revdamp`, `revlvl`. `hsync` — жёсткая синхронизация генераторов от СИНХР (`osc1`/`osc2`/`both`);
+детектор огибающей: `follsrc`, `follatk`, `follrel`, источник 10 в `route`; `out2src pitch` — на ВЫХ2
+напряжение высоты последней ноты (1 В/окт, 0 В = нота 60).

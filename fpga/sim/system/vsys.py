@@ -38,7 +38,14 @@ def build(top, params=None, defines=(), tb="tb_audio.cpp", extra_sources=(), sys
               f"-DTOP_CLASS=V{top}", f"-DTOP_HEADER='\"V{top}.h\"'"] + [f"-D{d}" for d in defines]
     cmd = ["verilator", "--cc", "--exe", "--build", "-j", "0", "-Wall", "-O3", "--top-module", top,
            "-CFLAGS", "-O2 " + " ".join(cflags), "-Mdir", str(obj)]
-    cmd += [f'-G{k}="{v}"' if isinstance(v, (str, Path)) else f"-G{k}={v}" for k, v in params.items()]
+    def gparam(k, v):
+        if isinstance(v, (str, Path)):
+            return f'-G{k}="{v}"'
+        if isinstance(v, int) and v > 0xFFFFFFFF:  # wider than an integer: sized literal
+            return f"-G{k}={(v.bit_length() + 7) // 8 * 8}'h{v:x}"
+        return f"-G{k}={v}"
+
+    cmd += [gparam(k, v) for k, v in params.items()]
     cmd += [str(f) for f in rtl_files()] + [str(s) for s in extra_sources] + [str(TB / tb)]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     exe = obj / f"V{top}"

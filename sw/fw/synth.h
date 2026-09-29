@@ -30,6 +30,7 @@ struct synth {
     int nslots;                    /* effect slots in the hardware */
     uint8_t slot_type[AVK_MAX_SLOTS];
     int8_t math_slot[AVK_PATCH_SLOTS], dly_slot[AVK_PATCH_SLOTS]; /* hardware index, -1 none */
+    int8_t cho_slot, rev_slot;
     uint32_t sync_samples;         /* SYNC period in samples, 0 unknown */
     uint32_t sync_edges;           /* last seen SYNC edge count */
     int sync_note;                 /* note held by SYNC_NOTE mode, -1 none */
@@ -56,6 +57,8 @@ int avk_poll(struct synth *s);
 void avk_cal_zero(int i);
 /* the current input is mv millivolts -> GAIN; returns 0 if the code equals the offset */
 int avk_cal_ref(int i, int32_t mv);
+/* OUT2 pitch CV for a note (1 V/octave, C4 = 0 V), Q2.16 */
+int32_t avk_pitch_cv(int note);
 /* SYNC frequency in 0.01 Hz, 0 if unknown */
 uint32_t avk_sync_hz100(const struct synth *s);
 

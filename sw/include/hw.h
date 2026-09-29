@@ -123,6 +123,7 @@
 #define S_AM               0x50u
 #define S_INFO             0x54u
 #define S_ENV_VOICE        0x58u
+#define S_HSYNC            0x5Cu /* {osc2, osc1}: hard sync on SYNC edges */
 
 /* modulation unit (fpga/rtl/voice/mod_unit.sv) */
 #define MOD_BASE           0x20020000u
@@ -133,10 +134,14 @@
 #define M_AM_BASE          0x14u
 #define M_AUX              0x18u
 #define M_GATE             0x1Cu
+#define M_FOLLOW_SRC       0x20u /* envelope follower: 0 IN1, 1 IN2 */
+#define M_FOLLOW_ATK       0x24u /* Q0.16 one-pole coefficients */
+#define M_FOLLOW_REL       0x28u
 #define M_ROUTE(k)         (0x40u + 8u * (k)) /* {dst[10:8], via[7:4], src[3:0]} */
 #define M_DEPTH(k)         (0x44u + 8u * (k))
 #define M_LFO_VAL(i)       (0x80u + 4u * (i))
-enum { SRC_ZERO, SRC_LFO1, SRC_LFO2, SRC_MODWHEEL, SRC_IN1, SRC_IN2, SRC_SYNC, SRC_ENV, SRC_GATE, SRC_AUX };
+enum { SRC_ZERO, SRC_LFO1, SRC_LFO2, SRC_MODWHEEL, SRC_IN1, SRC_IN2, SRC_SYNC, SRC_ENV, SRC_GATE, SRC_AUX,
+       SRC_FOLLOW };
 enum { DST_NONE, DST_PM, DST_CM, DST_AM, DST_PW };
 enum { LFO_SINE, LFO_TRI, LFO_SAW_UP, LFO_SQUARE, LFO_RANDOM, LFO_SAW_DOWN };
 
@@ -172,8 +177,12 @@ enum { BUS_SYNTH, BUS_IN1, BUS_IN2, BUS_LFO1, BUS_LFO2, BUS_SYNC, BUS_ENV, BUS_G
 #define SL_MEM_BASE        0x10u
 #define SL_MEM_SIZE        0x14u
 #define SL_PARAM(j)        (0x40u + 4u * (j))
-enum { SLOT_NONE, SLOT_MATH, SLOT_DELAY };
-/* DELAY: PARAM0 TIME (samples), PARAM1 FB, PARAM2 WET, PARAM3 DRY (Q2.16) */
+enum { SLOT_NONE, SLOT_MATH, SLOT_DELAY, SLOT_CHORUS, SLOT_REVERB };
+#define REVERB_WORDS 5934 /* memory a REVERB slot needs */
+#define CHORUS_WORDS 2048
+/* DELAY: PARAM0 TIME (samples), PARAM1 FB, PARAM2 WET, PARAM3 DRY (Q2.16)
+ * CHORUS: PARAM0 BASE, PARAM1 DEPTH (samples), PARAM2 RATE (phase inc), PARAM3 FB, PARAM4 WET, PARAM5 DRY
+ * REVERB: PARAM0 ROOM, PARAM1 DAMP (Q0.16), PARAM2 WET, PARAM3 DRY */
 enum { MATH_MUL, MATH_DIV, MATH_ABS, MATH_ADD, MATH_SUB, MATH_MIN, MATH_MAX, MATH_MOD, MATH_AXPB };
 #define Q16_ONE            65536
 

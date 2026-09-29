@@ -14,7 +14,7 @@ NV = 4
 FS = 48339.84
 GLOBAL_REGS = {"waves": 0, "pw": 1, "g1": 2, "g2": 3, "gn": 4, "cutoff": 5, "env2_depth": 6, "res_q": 7,
                "fmode": 8, "master": 9, "a1": 10, "d1": 11, "s1": 12, "r1": 13, "a2": 14, "d2": 15,
-               "s2": 16, "r2": 17, "pm": 18, "cm": 19, "am": 20}
+               "s2": 16, "r2": 17, "pm": 18, "cm": 19, "am": 20, "hsync": 23}
 VOICE_REGS = {"pitch1": 0, "pitch2": 1, "gate": 2, "vel_amp": 3, "cut_ofs": 4}
 
 
@@ -72,9 +72,10 @@ class Harness:
             setattr(r, name, val)
         await self.bus.vreg(v, name, val)
 
-    async def sample(self):
+    async def sample(self, sync_edge=0):
         """One tick; returns (rtl, model) S0."""
         d = self.dut
+        d.sync_edge.value = sync_edge
         d.tick.value = 1
         await RisingEdge(d.clk)
         d.tick.value = 0
@@ -82,7 +83,7 @@ class Harness:
             await RisingEdge(d.clk)
             if d.s0_valid.value:
                 break
-        return d.s0.value.signed_integer, self.m.sample()
+        return d.s0.value.signed_integer, self.m.sample(sync_edge)
 
 
 def rand_env(rng):
@@ -101,6 +102,7 @@ async def setup(dut):
     dut.cm_ext.value = 0
     dut.am_ext.value = 1 << 16
     dut.pw_ext.value = 0
+    dut.sync_edge.value = 0
     await start(dut)
     await ClockCycles(dut.clk, NV + 2)  # clear pass after reset
 
@@ -124,6 +126,7 @@ async def randomize(h, rng):
     await h.set_glob("pm", rng.randrange(-(1 << 17), 1 << 17))
     await h.set_glob("cm", rng.randrange(-(1 << 17), 1 << 17))
     await h.set_glob("am", rng.randrange(1 << 17))
+    await h.set_glob("hsync", rng.randrange(4))
     for v in range(NV):
         await h.set_voice(v, "pitch1", rng.randrange(1_400_000, 1_900_000))
         await h.set_voice(v, "pitch2", rng.randrange(1_400_000, 1_900_000))
@@ -151,7 +154,7 @@ async def bit_exact_random(dut):
                 await h.set_glob("am", h.am_reg)  # refresh model am
                 h.m.g.pw_mod = rng.randrange(-(1 << 16), 1 << 16)
                 dut.pw_ext.value = h.m.g.pw_mod
-            rtl, ref = await h.sample()
+            rtl, ref = await h.sample(int(n % 53 == 7))  # SYNC edges: hard sync
             if rtl != ref:
                 mism += 1
                 assert mism < 5, f"scene {scene} sample {n}: rtl {rtl} model {ref}"

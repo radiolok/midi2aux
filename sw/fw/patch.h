@@ -8,10 +8,11 @@
 /* P_SLOTn_*: the n-th MATH slot, P_SLOTn_OP: 0 off, 1 + MATH_*; P_DLYn_*: the n-th DELAY slot;
  * P_SYNC_MODE: SYNC_OFF / SYNC_LFO / SYNC_NOTE; P_DLY_SYNC: delay time = SYNC period */
 enum { SYNC_OFF, SYNC_LFO, SYNC_NOTE };
+#define OUT2_PITCH 12 /* P_OUT2_SRC: pitch CV of the last note, 1 V/octave, 0 V = C4 */
 #define SLOT_PARAMS (P_SLOT2_OP - P_SLOT1_OP)
 #define DLY_PARAMS  (P_DLY2_SRC - P_DLY1_SRC)
 
-enum unit { U_NONE, U_ENUM, U_HZ, U_HZ100, U_MS, U_PCT, U_CENTS, U_SEMI, U_Q100 };
+enum unit { U_NONE, U_ENUM, U_HZ, U_HZ100, U_MS, U_PCT, U_CENTS, U_SEMI, U_Q100, U_MS10 };
 
 enum param_id {
     P_WAVE1, P_WAVE2, P_PW, P_DETUNE, P_OSC2_SEMI, P_MIX1, P_MIX2, P_NOISE,
@@ -22,6 +23,9 @@ enum param_id {
     P_SLOT1_OP, P_SLOT1_A, P_SLOT1_B, P_SLOT1_K, P_SLOT2_OP, P_SLOT2_A, P_SLOT2_B, P_SLOT2_K,
     P_DLY1_SRC, P_DLY1_TIME, P_DLY1_FB, P_DLY1_LVL, P_DLY2_SRC, P_DLY2_TIME, P_DLY2_FB, P_DLY2_LVL,
     P_DLY_SYNC,
+    P_CHO_SRC, P_CHO_BASE, P_CHO_DEPTH, P_CHO_RATE, P_CHO_FB, P_CHO_LVL,
+    P_REV_SRC, P_REV_ROOM, P_REV_DAMP, P_REV_LVL,
+    P_HSYNC, P_FOLLOW_SRC, P_FOLLOW_ATK, P_FOLLOW_REL,
     P_COUNT
 };
 

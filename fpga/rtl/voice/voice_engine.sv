@@ -18,6 +18,8 @@
 //     0x48 PM  0x4C CM  0x50 AM     global pitch / cutoff offsets, amplitude Q2.16
 //     0x54 INFO R: {NUM_VOICES[15:0]}
 //     0x58 ENV_VOICE  voice whose ADSR1 level is output on env_out (modulation source ENV)
+//     0x5C HSYNC {osc2[1], osc1[0]}: hard sync, a SYNC edge (sync_edge at tick) restarts the
+//          phase of the selected oscillators of all voices (phase = inc of that sample)
 `default_nettype none
 
 module voice_engine #(
@@ -37,6 +39,7 @@ module voice_engine #(
     input  wire signed [22:0]  cm_ext,
     input  wire signed [17:0]  am_ext,     // Q2.16, 1.0 = no change
     input  wire signed [16:0]  pw_ext,     // added to PW, clamped to 0..65535
+    input  wire                sync_edge,  // with tick: SYNC rising edge (hard sync)
     // output
     output logic signed [19:0] s0,         // Q4.16
     output logic               s0_valid,
@@ -67,6 +70,7 @@ module voice_engine #(
     logic [16:0]        s1, s2;
     logic signed [22:0] pm_reg, cm_reg;
     logic [VW-1:0]      env_voice;
+    logic [1:0]         hsync;
 
     wire        is_glob = addr[16];
     wire [5:0]  greg    = addr[7:2];
@@ -81,7 +85,7 @@ module voice_engine #(
             master <= 18'sd65536; am_reg <= 18'sd65536;
             a1c <= '0; d1c <= '0; r1c <= '0; a2c <= '0; d2c <= '0; r2c <= '0;
             s1 <= 17'd65536; s2 <= '0;
-            pm_reg <= '0; cm_reg <= '0; env_voice <= '0;
+            pm_reg <= '0; cm_reg <= '0; env_voice <= '0; hsync <= '0;
         end else if (req && we && is_glob) begin
             case (greg)
                 6'd0:  {wave2, wave1} <= wdata[3:0];
@@ -106,6 +110,7 @@ module voice_engine #(
                 6'd19: cm_reg <= wdata[22:0];
                 6'd20: am_reg <= wdata[17:0];
                 6'd22: env_voice <= wdata[VW-1:0];
+                6'd23: hsync <= wdata[1:0];
                 default: ;
             endcase
         end
@@ -280,6 +285,9 @@ module voice_engine #(
     logic [31:0]        lfsr;
     logic signed [17:0] am_eff;
     logic signed [22:0] pm_tot, cm_tot;
+    logic [1:0]         hs_now;  // hard sync this sample {osc2, osc1}
+    wire  [31:0]        ph1_b = hs_now[0] ? '0 : s.ph1;
+    wire  [31:0]        ph2_b = hs_now[1] ? '0 : s.ph2;
     logic [15:0]        pw_tot;
     wire signed [17:0]  pw_sum = $signed({2'b00, pw}) + 18'(pw_ext);
 
@@ -311,7 +319,7 @@ module voice_engine #(
     end
 
     // sine ROM address: osc1 phase at t = 5, osc2 at t = 6 (data one clk later)
-    assign rom_ph = (t == 5'd5 ? s.ph1 : s.ph2) + p2i_out;
+    assign rom_ph = (t == 5'd5 ? ph1_b : ph2_b) + p2i_out;
 
     wire signed [23:0] c_sum = $signed({3'b0, cutoff}) + 24'(cofs_r) + 24'(prod >>> 16) + 24'(cm_tot);
     wire signed [42:0] mix_sum = acc + prod;
@@ -331,6 +339,7 @@ module voice_engine #(
             am_eff <= 18'sd65536;
             pm_tot <= '0;
             cm_tot <= '0;
+            hs_now <= '0;
             pw_tot <= 16'h8000;
             env_out <= '0;
         end else if (clr) begin
@@ -343,6 +352,7 @@ module voice_engine #(
             t      <= '0;
             sum    <= '0;
             pm_tot <= pm_reg + pm_ext;
+            hs_now <= sync_edge ? hsync : 2'b00;
             cm_tot <= cm_reg + cm_ext;
             pw_tot <= pw_sum < 0 ? 16'h0 : pw_sum > 18'sd65535 ? 16'hFFFF : pw_sum[15:0];
             ma     <= 25'(am_reg);
@@ -415,12 +425,12 @@ module voice_engine #(
                     mb     <= vel_r;
                 end
                 5'd5: begin
-                    ph1n <= s.ph1 + p2i_out;
+                    ph1n <= ph1_b + p2i_out;
                     ma   <= 25'(sat18(prod >>> 16));
                     mb   <= am_eff;
                 end
                 5'd6: begin
-                    ph2n <= s.ph2 + p2i_out;
+                    ph2n <= ph2_b + p2i_out;
                     a    <= sat18(prod >>> 16);
                     o1   <= wave(wave1, ph1n, pw_tot, rom_q, rom_quad_q);
                     lfsr <= (lfsr >> 1) ^ (lfsr[0] ? LFSR_TAPS : 32'h0);

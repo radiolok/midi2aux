@@ -83,8 +83,8 @@ module top (
         .RAM_BYTES      (32768),
         .FW_FLASH_OFFSET(32'h0050_0000),
         .NUM_VOICES     (32),
-        .NUM_SLOTS      (4),
-        .SLOT_TYPES     (32'h02_02_01_01),  // MATH, MATH, DELAY, DELAY
+        .NUM_SLOTS      (6),
+        .SLOT_TYPES     (48'h04_03_02_02_01_01),  // MATH, MATH, DELAY, DELAY, CHORUS, REVERB
         .MEM_WORDS      (MEM_WORDS)
     ) u_core (
         .clk       (clk),

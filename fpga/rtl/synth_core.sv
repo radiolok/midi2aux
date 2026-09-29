@@ -299,7 +299,7 @@ module synth_core #(
     voice_engine #(.NUM_VOICES(NUM_VOICES)) u_voices (
         .clk(clk), .rst(rst), .tick(audio_tick),
         .req(req && sel == SEL_VOICE), .we(we), .addr(mem_addr[16:0]), .wdata(mem_wdata), .rdata(voice_q),
-        .pm_ext(mod_pm), .cm_ext(mod_cm), .am_ext(mod_am), .pw_ext(mod_pw),
+        .pm_ext(mod_pm), .cm_ext(mod_cm), .am_ext(mod_am), .pw_ext(mod_pw), .sync_edge(sync_edge),
         .s0(s0), .s0_valid(s0_valid), .busy(engine_busy), .env_out(env_out)
     );
 

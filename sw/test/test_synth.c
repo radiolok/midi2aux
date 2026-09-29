@@ -146,11 +146,11 @@ static void test_modulation(void)
 static void init_avk(void)
 {
     memset(regs, 0, sizeof regs);
-    static const uint8_t types[] = {SLOT_MATH, SLOT_MATH, SLOT_DELAY, SLOT_DELAY};
-    for (int k = 0; k < 4; k++)
+    static const uint8_t types[] = {SLOT_MATH, SLOT_MATH, SLOT_DELAY, SLOT_DELAY, SLOT_CHORUS, SLOT_REVERB};
+    for (int k = 0; k < 6; k++)
         regs[idx(SLOT_REG(k, SL_TYPE))] = types[k];
-    regs[idx(SYSINFO_NUM_SLOTS)] = 4;
-    regs[idx(SYSINFO_MEM_WORDS)] = 1000;
+    regs[idx(SYSINFO_NUM_SLOTS)] = 6;
+    regs[idx(SYSINFO_MEM_WORDS)] = REVERB_WORDS + CHORUS_WORDS + 1000;
     synth_init(&s, 4, FS);
 }
 
@@ -159,19 +159,25 @@ static void test_avk_defaults(void)
     init(4); /* no slots in the hardware: nothing enabled */
     CHECK_EQ(s.nslots, 0);
     init_avk();
-    CHECK_EQ(s.nslots, 4);
+    CHECK_EQ(s.nslots, 6);
+    CHECK_EQ(s.cho_slot, 4);
+    CHECK_EQ(s.rev_slot, 5);
+    CHECK_EQ(hw_read(SLOT_REG(5, SL_MEM_BASE)), 0); /* reverb, chorus: fixed sizes first */
+    CHECK_EQ(hw_read(SLOT_REG(5, SL_MEM_SIZE)), REVERB_WORDS);
+    CHECK_EQ(hw_read(SLOT_REG(4, SL_MEM_BASE)), REVERB_WORDS);
+    CHECK_EQ(hw_read(SLOT_REG(4, SL_MEM_SIZE)), CHORUS_WORDS);
     CHECK_EQ(s.math_slot[0], 0);
     CHECK_EQ(s.math_slot[1], 1);
     CHECK_EQ(s.dly_slot[0], 2);
     CHECK_EQ(s.dly_slot[1], 3);
-    CHECK_EQ(hw_read(SLOT_REG(2, SL_MEM_BASE)), 0); /* memory split between the delays */
+    CHECK_EQ(hw_read(SLOT_REG(2, SL_MEM_BASE)), REVERB_WORDS + CHORUS_WORDS); /* the delays split the rest */
     CHECK_EQ(hw_read(SLOT_REG(2, SL_MEM_SIZE)), 500);
-    CHECK_EQ(hw_read(SLOT_REG(3, SL_MEM_BASE)), 500);
+    CHECK_EQ(hw_read(SLOT_REG(3, SL_MEM_BASE)), REVERB_WORDS + CHORUS_WORDS + 500);
     CHECK_EQ(hw_read(SLOT_REG(3, SL_MEM_SIZE)), 500);
     CHECK_EQ(hw_read(BUS_OUT2_SEL), BUS_LFO1);
     CHECK_EQ(hw_read(BUS_OUT2_GAIN), 65536);
     CHECK_EQ(hw_read(BUS_GAIN(BUS_IN1)), 0);
-    for (int k = 0; k < 4; k++) /* MATH off, delays at level 0 */
+    for (int k = 0; k < 6; k++) /* MATH off, effects at level 0 */
         CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + k)), 0);
     CHECK_EQ(hw_read(SLOT_REG(0, SL_BYPASS)), 1);
     CHECK_EQ(hw_read(SLOT_REG(2, SL_BYPASS)), 0); /* delays keep running */
@@ -284,8 +290,55 @@ static void test_avk_calibration(void)
     CHECK_EQ(avk_cal_ref(1, 10000), 0);
 }
 
+static void test_avk_chorus_reverb(void)
+{
+    init_avk();
+    CHECK_EQ(hw_read(SLOT_REG(4, SL_PARAM(0))), 338); /* 7 ms */
+    CHECK_EQ(hw_read(SLOT_REG(4, SL_PARAM(1))), 145); /* 3 ms */
+    CHECK_EQ(hw_read(SLOT_REG(4, SL_PARAM(2))), lfo_inc(&FS, 50));
+    synth_set_param(&s, P_CHO_LVL, 100);
+    synth_set_param(&s, P_FX_MIX, 100);
+    CHECK_EQ(hw_read(BUS_GAIN(BUS_SLOT0 + 4)), 65536);
+    synth_set_param(&s, P_REV_ROOM, 100);
+    synth_set_param(&s, P_REV_DAMP, 100);
+    CHECK_EQ(hw_read(SLOT_REG(5, SL_PARAM(0))), 64225);
+    CHECK_EQ(hw_read(SLOT_REG(5, SL_PARAM(1))), 26214);
+    synth_set_param(&s, P_REV_SRC, BUS_IN2);
+    CHECK_EQ(hw_read(SLOT_REG(5, SL_SEL_A)), BUS_IN2);
+    /* too little memory for the reverb: it gets none */
+    memset(regs, 0, sizeof regs);
+    regs[idx(SLOT_REG(0, SL_TYPE))] = SLOT_REVERB;
+    regs[idx(SYSINFO_NUM_SLOTS)] = 1;
+    regs[idx(SYSINFO_MEM_WORDS)] = 4096;
+    synth_init(&s, 4, FS);
+    CHECK_EQ(hw_read(SLOT_REG(0, SL_MEM_SIZE)), 0);
+}
+
+static void test_hsync_follower_pitch_cv(void)
+{
+    init_avk();
+    synth_set_param(&s, P_HSYNC, 2);
+    CHECK_EQ(hw_read(SYNTH_REG(S_HSYNC)), 2);
+    synth_set_param(&s, P_FOLLOW_SRC, 1);
+    CHECK_EQ(hw_read(MOD_REG(M_FOLLOW_SRC)), 1);
+    /* 1 - e^(-1 / (5 ms * fs)) = 0.004128 */
+    CHECK(llabs((long long)hw_read(MOD_REG(M_FOLLOW_ATK)) - 271) <= 1);
+    CHECK(llabs((long long)hw_read(MOD_REG(M_FOLLOW_REL)) - 14) <= 1);
+    CHECK_EQ(avk_pitch_cv(60), 0);
+    CHECK_EQ(avk_pitch_cv(72), 6554); /* +1 V */
+    CHECK_EQ(avk_pitch_cv(48), -6554);
+    synth_set_param(&s, P_OUT2_SRC, OUT2_PITCH);
+    CHECK_EQ(hw_read(BUS_OUT2_GAIN), 0);
+    synth_midi(&s, 0x90, 67, 100);
+    CHECK_EQ((int32_t)hw_read(BUS_OUT2_DC), avk_pitch_cv(67));
+    synth_set_param(&s, P_OUT2_SRC, BUS_LFO1);
+    CHECK_EQ(hw_read(BUS_OUT2_DC), 0);
+}
+
 int main(void)
 {
+    RUN(test_avk_chorus_reverb);
+    RUN(test_hsync_follower_pitch_cv);
     RUN(test_avk_defaults);
     RUN(test_avk_slots_and_out2);
     RUN(test_avk_delay);

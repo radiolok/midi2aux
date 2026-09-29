@@ -34,6 +34,11 @@ static const struct page pages[] = {
     {"ЗАДЕРЖКА 1", {P_DLY1_SRC, P_DLY1_TIME, P_DLY1_FB}},
     {"ЗАДЕРЖКА 2", {P_DLY2_SRC, P_DLY2_TIME, P_DLY2_FB}},
     {"ЗАДЕРЖКИ: УРОВНИ", {P_DLY1_LVL, P_DLY2_LVL, P_DLY_SYNC}},
+    {"ХОРУС / ФЛЭНЖЕР", {P_CHO_SRC, P_CHO_BASE, P_CHO_DEPTH}},
+    {"ХОРУС: LFO, УРОВЕНЬ", {P_CHO_RATE, P_CHO_FB, P_CHO_LVL}},
+    {"РЕВЕРБЕРАЦИЯ", {P_REV_SRC, P_REV_ROOM, P_REV_DAMP}},
+    {"РЕВЕРБ., СИНХР. ГЕН.", {P_REV_LVL, P_HSYNC, P_FOLLOW_SRC}},
+    {"ДЕТЕКТОР, ВЫХ2", {P_FOLLOW_ATK, P_FOLLOW_REL, P_OUT2_SRC}},
 };
 const int ui_num_pages = sizeof pages / sizeof pages[0];
 
@@ -71,6 +76,7 @@ int32_t ui_step(int id, int32_t v, int dir)
     case U_HZ:
     case U_HZ100:
     case U_MS:
+    case U_MS10:
     case U_Q100:
         step = v / 16; /* ~6 % per detent */
         if (step < 1)

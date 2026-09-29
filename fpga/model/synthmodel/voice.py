@@ -11,7 +11,8 @@ Per sample, for every voice v = 0..N-1 in order (all shifts are arithmetic, floo
    DECAY:   T = sustain << 14 (sustain Q0.16), stays there (sustain phase), e >= 0
    RELEASE: T = -1e-3 (so it ends at the -60 dB time), stops at 0 -> IDLE
    env_q = e >> 14 (Q2.16).
-2. Oscillators: pitch = clamp21(PITCHk + pm); phase += pitch2inc(pitch);
+2. Oscillators: pitch = clamp21(PITCHk + pm); phase += pitch2inc(pitch) (hard sync: phase = inc
+   for the oscillators in HSYNC when the sample has a SYNC edge);
    waves from the 32-bit phase, +-1.0 = +-2^16: saw, square/PWM (pw = clamp(PW + pw_mod, 0, 65535)),
    triangle, sine.
    Noise: 32-bit Galois LFSR (shared, one step per voice), n = (lfsr >> 15) - 2^16.
@@ -83,6 +84,7 @@ class GlobalParams:
     cm: int = 0               # global cutoff offset, signed
     am: int = 1 << 16         # global amplitude, Q2.16
     pw_mod: int = 0           # pulse width offset from the modulation unit, signed
+    hsync: int = 0            # {osc2, osc1}: restart phases on a SYNC edge
 
 
 @dataclass
@@ -169,7 +171,7 @@ class VoiceEngine:
         self.st = [VoiceState() for _ in range(num_voices)]
         self.lfsr = lfsr_seed
 
-    def voice(self, v, g: GlobalParams):
+    def voice(self, v, g: GlobalParams, sync_edge=0):
         r, s = self.regs[v], self.st[v]
         rt = r.retrig != s.rt_prev
         s.e1, s.st1 = env_step(s.e1, s.st1, r.gate, s.gate_prev, rt, g.env1)
@@ -177,8 +179,9 @@ class VoiceEngine:
         s.gate_prev, s.rt_prev = r.gate, r.retrig
         env1_q, env2_q = s.e1 >> 14, s.e2 >> 14
 
-        s.ph1 = (s.ph1 + pitch2inc(clamp(r.pitch1 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
-        s.ph2 = (s.ph2 + pitch2inc(clamp(r.pitch2 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
+        hs = g.hsync if sync_edge else 0
+        s.ph1 = ((0 if hs & 1 else s.ph1) + pitch2inc(clamp(r.pitch1 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
+        s.ph2 = ((0 if hs & 2 else s.ph2) + pitch2inc(clamp(r.pitch2 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
         pw = clamp(g.pw + g.pw_mod, 0, 65535)
         o1, o2 = wave(s.ph1, g.wave1, pw), wave(s.ph2, g.wave2, pw)
         self.lfsr = lfsr_step(self.lfsr)
@@ -198,8 +201,8 @@ class VoiceEngine:
         a = sat((((env1_q * r.vel_amp) >> 16) * g.am) >> 16, 18)
         return sat((y * a) >> 16, 18)
 
-    def sample(self):
-        acc = sum(self.voice(v, self.g) for v in range(self.n))
+    def sample(self, sync_edge=0):
+        acc = sum(self.voice(v, self.g, sync_edge) for v in range(self.n))
         return sat((acc * self.g.master) >> 16, 20)
 
     def run(self, n):
