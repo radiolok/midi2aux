@@ -14,7 +14,7 @@ NV = 4
 FS = 48339.84
 GLOBAL_REGS = {"waves": 0, "pw": 1, "g1": 2, "g2": 3, "gn": 4, "cutoff": 5, "env2_depth": 6, "res_q": 7,
                "fmode": 8, "master": 9, "a1": 10, "d1": 11, "s1": 12, "r1": 13, "a2": 14, "d2": 15,
-               "s2": 16, "r2": 17, "pm": 18, "cm": 19, "am": 20, "hsync": 23}
+               "s2": 16, "r2": 17, "pm": 18, "cm": 19, "am": 20, "hsync": 23, "blep": 24}
 VOICE_REGS = {"pitch1": 0, "pitch2": 1, "gate": 2, "vel_amp": 3, "cut_ofs": 4}
 
 
@@ -127,6 +127,8 @@ async def randomize(h, rng):
     await h.set_glob("cm", rng.randrange(-(1 << 17), 1 << 17))
     await h.set_glob("am", rng.randrange(1 << 17))
     await h.set_glob("hsync", rng.randrange(4))
+    h.scenes = getattr(h, "scenes", 0) + 1
+    await h.set_glob("blep", h.scenes % 2)  # PolyBLEP in every other scene
     for v in range(NV):
         await h.set_voice(v, "pitch1", rng.randrange(1_400_000, 1_900_000))
         await h.set_voice(v, "pitch2", rng.randrange(1_400_000, 1_900_000))
@@ -178,7 +180,7 @@ async def status_and_timing(dut):
     while not d.s0_valid.value:
         await RisingEdge(d.clk)
         cycles += 1
-    assert cycles <= 22 * NV + 8
+    assert cycles <= 32 * NV + 8
     for _ in range(200):
         await h.sample()
     st = await h.bus.read((2 << 6) | (5 << 2))

@@ -14,7 +14,12 @@ Per sample, for every voice v = 0..N-1 in order (all shifts are arithmetic, floo
 2. Oscillators: pitch = clamp21(PITCHk + pm); phase += pitch2inc(pitch) (hard sync: phase = inc
    for the oscillators in HSYNC when the sample has a SYNC edge);
    waves from the 32-bit phase, +-1.0 = +-2^16: saw, square/PWM (pw = clamp(PW + pw_mod, 0, 65535)),
-   triangle, sine.
+   triangle, sine. With BLEP on, saw and square get PolyBLEP corrections at their jumps:
+     x(d) = min(((d >> (e - 16)) * rn) >> 17, 2^16)  (d << (16 - e) if e < 16), where e = pitch >> 16,
+     rn = min(pitch2inc(17 * 2^16 - (pitch & 0xFFFF)), 2^17 - 1)   (x = d / inc in Q16)
+     c(ph) = 2x - (x*x >> 16) - 2^16 for ph < inc (x = x(ph)),
+             (x*x >> 16) - 2x + 2^16 for 2^32 - ph < inc (x = x(2^32 - ph)), else 0
+     saw -= c(ph);  square += c(ph) - c(ph - PW * 2^16)   (sat18).
    Noise: 32-bit Galois LFSR (shared, one step per voice), n = (lfsr >> 15) - 2^16.
 3. Mix: x = sat18((o1*G1 + o2*G2 + n*GN) >> 16).
 4. Cutoff (log pitch units, like oscillators): c = clamp(CUTOFF + CUT_OFS + (env2_q*ENV2_DEPTH >> 16) + cm)
@@ -85,6 +90,7 @@ class GlobalParams:
     am: int = 1 << 16         # global amplitude, Q2.16
     pw_mod: int = 0           # pulse width offset from the modulation unit, signed
     hsync: int = 0            # {osc2, osc1}: restart phases on a SYNC edge
+    blep: int = 0             # PolyBLEP on saw / square
 
 
 @dataclass
@@ -150,6 +156,32 @@ def wave(ph, w, pw):
     return int(nco.sine_int(ph)) >> 1
 
 
+def blep_x(d, pitch):
+    e, frac = pitch >> 16, pitch & 0xFFFF
+    rn = min(pitch2inc((17 << 16) - frac), (1 << 17) - 1)
+    n = d >> (e - 16) if e >= 16 else d << (16 - e)
+    return min((n * rn) >> 17, 1 << 16)
+
+
+def blep(ph, inc, pitch):
+    if ph < inc:
+        x = blep_x(ph, pitch)
+        return 2 * x - ((x * x) >> 16) - (1 << 16)
+    if (1 << 32) - ph < inc:
+        x = blep_x((1 << 32) - ph, pitch)
+        return ((x * x) >> 16) - 2 * x + (1 << 16)
+    return 0
+
+
+def wave_blep(ph, w, pw, inc, pitch):
+    o = wave(ph, w, pw)
+    if w == SAW:
+        return sat(o - blep(ph, inc, pitch), 18)
+    if w == SQUARE:
+        return sat(o + blep(ph, inc, pitch) - blep((ph - (pw << 16)) & 0xFFFFFFFF, inc, pitch), 18)
+    return o
+
+
 def lfsr_step(x):
     return (x >> 1) ^ (LFSR_TAPS if x & 1 else 0)
 
@@ -180,10 +212,15 @@ class VoiceEngine:
         env1_q, env2_q = s.e1 >> 14, s.e2 >> 14
 
         hs = g.hsync if sync_edge else 0
-        s.ph1 = ((0 if hs & 1 else s.ph1) + pitch2inc(clamp(r.pitch1 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
-        s.ph2 = ((0 if hs & 2 else s.ph2) + pitch2inc(clamp(r.pitch2 + g.pm, 0, PITCH_MAX))) & 0xFFFFFFFF
+        p1, p2 = clamp(r.pitch1 + g.pm, 0, PITCH_MAX), clamp(r.pitch2 + g.pm, 0, PITCH_MAX)
+        i1, i2 = pitch2inc(p1), pitch2inc(p2)
+        s.ph1 = ((0 if hs & 1 else s.ph1) + i1) & 0xFFFFFFFF
+        s.ph2 = ((0 if hs & 2 else s.ph2) + i2) & 0xFFFFFFFF
         pw = clamp(g.pw + g.pw_mod, 0, 65535)
-        o1, o2 = wave(s.ph1, g.wave1, pw), wave(s.ph2, g.wave2, pw)
+        if g.blep:
+            o1, o2 = wave_blep(s.ph1, g.wave1, pw, i1, p1), wave_blep(s.ph2, g.wave2, pw, i2, p2)
+        else:
+            o1, o2 = wave(s.ph1, g.wave1, pw), wave(s.ph2, g.wave2, pw)
         self.lfsr = lfsr_step(self.lfsr)
         nz = (self.lfsr >> 15) - (1 << 16)
         x = sat((o1 * g.g1 + o2 * g.g2 + nz * g.gn) >> 16, 18)

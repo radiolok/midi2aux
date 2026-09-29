@@ -1,7 +1,7 @@
 // Polyphonic voice engine, time-multiplexed: NUM_VOICES voices per sample through one
 // datapath with a shared 25x18 multiplier (schedule in the sequencer below).
 // Per voice: 2 NCO (saw / square-PWM / triangle / sine) + noise -> mix -> Chamberlin SVF
-// (2x oversampled, LP/BP/HP) -> VCA (ADSR1 x velocity x AM); ADSR2 -> cutoff. 22 clk per voice.
+// (2x oversampled, LP/BP/HP) -> VCA (ADSR1 x velocity x AM); ADSR2 -> cutoff. 32 clk per voice.
 // Bit-exact model: fpga/model/synthmodel/voice.py (the arithmetic is specified there).
 //
 // CPU registers (byte offsets in the 128 KB window):
@@ -18,6 +18,7 @@
 //     0x48 PM  0x4C CM  0x50 AM     global pitch / cutoff offsets, amplitude Q2.16
 //     0x54 INFO R: {NUM_VOICES[15:0]}
 //     0x58 ENV_VOICE  voice whose ADSR1 level is output on env_out (modulation source ENV)
+//     0x60 BLEP bit0: PolyBLEP on saw / square (see the model)
 //     0x5C HSYNC {osc2[1], osc1[0]}: hard sync, a SYNC edge (sync_edge at tick) restarts the
 //          phase of the selected oscillators of all voices (phase = inc of that sample)
 `default_nettype none
@@ -71,6 +72,7 @@ module voice_engine #(
     logic signed [22:0] pm_reg, cm_reg;
     logic [VW-1:0]      env_voice;
     logic [1:0]         hsync;
+    logic               blep_en;
 
     wire        is_glob = addr[16];
     wire [5:0]  greg    = addr[7:2];
@@ -85,7 +87,7 @@ module voice_engine #(
             master <= 18'sd65536; am_reg <= 18'sd65536;
             a1c <= '0; d1c <= '0; r1c <= '0; a2c <= '0; d2c <= '0; r2c <= '0;
             s1 <= 17'd65536; s2 <= '0;
-            pm_reg <= '0; cm_reg <= '0; env_voice <= '0; hsync <= '0;
+            pm_reg <= '0; cm_reg <= '0; env_voice <= '0; hsync <= '0; blep_en <= 1'b0;
         end else if (req && we && is_glob) begin
             case (greg)
                 6'd0:  {wave2, wave1} <= wdata[3:0];
@@ -111,6 +113,7 @@ module voice_engine #(
                 6'd20: am_reg <= wdata[17:0];
                 6'd22: env_voice <= wdata[VW-1:0];
                 6'd23: hsync <= wdata[1:0];
+                6'd24: blep_en <= wdata[0];
                 default: ;
             endcase
         end
@@ -247,6 +250,36 @@ module voice_engine #(
     endfunction
     /* verilator lint_on UNUSEDSIGNAL */
 
+    // PolyBLEP: which side of a jump the phase is on, and the distance to it
+    function automatic logic [33:0] edge_of(input logic [31:0] ph, input logic [31:0] inc, input logic en);
+        if (en && ph < inc) return {2'b01, ph};
+        if (en && ph != 32'h0 && (~ph + 32'd1) < inc) return {2'b10, ~ph + 32'd1};
+        return '0;
+    endfunction
+
+    function automatic logic [16:0] norm(input logic [31:0] d, input logic [4:0] e);
+        return e >= 5'd16 ? 17'(d >> (e - 5'd16)) : 17'(d << (5'd16 - e));
+    endfunction
+
+    function automatic logic signed [19:0] blep_c(input logic [1:0] side, input logic signed [17:0] x,
+                                                   input logic signed [17:0] sq);
+        case (side)
+            2'b01:   return (20'(x) <<< 1) - 20'(sq) - 20'sd65536;
+            2'b10:   return 20'(sq) - (20'(x) <<< 1) + 20'sd65536;
+            default: return '0;
+        endcase
+    endfunction
+
+    function automatic logic signed [17:0] blep_apply(input logic signed [17:0] o, input logic [1:0] w,
+                                                       input logic [1:0] sa, input logic signed [17:0] xa_,
+                                                       input logic signed [17:0] sqa_, input logic [1:0] sb,
+                                                       input logic signed [17:0] xb_, input logic signed [17:0] sqb_);
+        logic signed [19:0] r;
+        r = w == 2'd0 ? 20'(o) - blep_c(sa, xa_, sqa_)
+                      : 20'(o) + blep_c(sa, xa_, sqa_) - blep_c(sb, xb_, sqb_);
+        return r > 20'sd131071 ? 18'sd131071 : r < -20'sd131072 ? -18'sd131072 : 18'(r);
+    endfunction
+
     // envelope: stage after gate edges, and the segment's target / coefficient
     function automatic logic [1:0] env_edge(input logic [1:0] st, input logic gate, input logic gprev,
                                             input logic rt);
@@ -289,6 +322,13 @@ module voice_engine #(
     wire  [31:0]        ph1_b = hs_now[0] ? '0 : s.ph1;
     wire  [31:0]        ph2_b = hs_now[1] ? '0 : s.ph2;
     logic [15:0]        pw_tot;
+    // PolyBLEP
+    logic [20:0]        pc1, pc2;          // clamped pitches
+    logic [31:0]        inc1, inc2;
+    logic [33:0]        ea1, eb1, ea2, eb2; // {after jump, before jump, distance}
+    logic signed [17:0] rn, rn2, xa, xb, sqa;
+    wire  signed [17:0] rn_c = p2i_out > 32'd131071 ? 18'sd131071 : 18'(p2i_out);
+    wire  signed [17:0] x_c  = (prod >>> 17) > 43'sd65536 ? 18'sd65536 : 18'(prod >>> 17);
     wire signed [17:0]  pw_sum = $signed({2'b00, pw}) + 18'(pw_ext);
 
     wire rt = gate_r[1] != s.rtprev;
@@ -372,6 +412,7 @@ module voice_engine #(
                     mb     <= 18'((env_target(st1e, s1) - $signed({2'b0, s.e1})) >>> 14);
                     sh1    <= c1[21:17];
                     p2i_in <= clamp21($signed({3'b0, p1_r}) + 24'(pm_tot));
+                    pc1    <= clamp21($signed({3'b0, p1_r}) + 24'(pm_tot));
                     p2i_v  <= 1'b1;
                 end
                 5'd2: begin
@@ -391,6 +432,7 @@ module voice_engine #(
                     mb     <= 18'((env_target(st2a, s2) - $signed({2'b0, s.e2})) >>> 14);
                     sh2    <= c2[21:17];
                     p2i_in <= clamp21($signed({3'b0, p2_r}) + 24'(pm_tot));
+                    pc2    <= clamp21($signed({3'b0, p2_r}) + 24'(pm_tot));
                     p2i_v  <= 1'b1;
                 end
                 5'd3: begin
@@ -426,11 +468,17 @@ module voice_engine #(
                 end
                 5'd5: begin
                     ph1n <= ph1_b + p2i_out;
+                    inc1 <= p2i_out;
+                    p2i_in <= 21'(17 << 16) - {5'b0, pc1[15:0]};  // 2^17 / 2^frac: rn at t = 9
+                    p2i_v  <= 1'b1;
                     ma   <= 25'(sat18(prod >>> 16));
                     mb   <= am_eff;
                 end
                 5'd6: begin
                     ph2n <= ph2_b + p2i_out;
+                    inc2 <= p2i_out;
+                    p2i_in <= 21'(17 << 16) - {5'b0, pc2[15:0]};  // rn at t = 10
+                    p2i_v  <= 1'b1;
                     a    <= sat18(prod >>> 16);
                     o1   <= wave(wave1, ph1n, pw_tot, rom_q, rom_quad_q);
                     lfsr <= (lfsr >> 1) ^ (lfsr[0] ? LFSR_TAPS : 32'h0);
@@ -438,67 +486,118 @@ module voice_engine #(
                 5'd7: begin
                     o2 <= wave(wave2, ph2n, pw_tot, rom_q, rom_quad_q);
                     nz <= 18'($signed({2'b00, lfsr[31:15]}) - 19'sd65536);
-                    ma <= 25'(o1);
-                    mb <= g1;
+                    ea1 <= edge_of(ph1n, inc1, blep_en && wave1 < 2'd2);
+                    eb1 <= edge_of(ph1n - {pw_tot, 16'h0}, inc1, blep_en && wave1 == 2'd1);
                 end
                 5'd8: begin
                     incc <= p2i_out;
-                    acc  <= prod;
-                    ma   <= 25'(o2);
-                    mb   <= g2;
+                    ea2  <= edge_of(ph2n, inc2, blep_en && wave2 < 2'd2);
+                    eb2  <= edge_of(ph2n - {pw_tot, 16'h0}, inc2, blep_en && wave2 == 2'd1);
                 end
+                // PolyBLEP (t = 9..17): x = d / inc = (d normalised) * rn, then x^2, per jump
                 5'd9: begin
+                    rn <= rn_c;
+                    ma <= 25'(norm(ea1[31:0], pc1[20:16]));
+                    mb <= rn_c;
+                end
+                5'd10: begin
+                    rn2 <= rn_c;
+                    xa  <= x_c;
+                    ma  <= 25'(norm(eb1[31:0], pc1[20:16]));
+                    mb  <= rn;
+                end
+                5'd11: begin
+                    xb <= x_c;
+                    ma <= 25'(xa);
+                    mb <= xa;
+                end
+                5'd12: begin
+                    sqa <= 18'(prod >>> 16);
+                    ma  <= 25'(xb);
+                    mb  <= xb;
+                end
+                5'd13: begin
+                    o1 <= blep_apply(o1, wave1, ea1[33:32], xa, sqa, eb1[33:32], xb, 18'(prod >>> 16));
+                    ma <= 25'(norm(ea2[31:0], pc2[20:16]));
+                    mb <= rn2;
+                end
+                5'd14: begin
+                    xa <= x_c;
+                    ma <= 25'(norm(eb2[31:0], pc2[20:16]));
+                    mb <= rn2;
+                end
+                5'd15: begin
+                    xb <= x_c;
+                    ma <= 25'(xa);
+                    mb <= xa;
+                end
+                5'd16: begin
+                    sqa <= 18'(prod >>> 16);
+                    ma  <= 25'(xb);
+                    mb  <= xb;
+                end
+                5'd17: begin
+                    o2 <= blep_apply(o2, wave2, ea2[33:32], xa, sqa, eb2[33:32], xb, 18'(prod >>> 16));
+                    ma <= 25'(o1);
+                    mb <= g1;
+                end
+                5'd18: begin
+                    acc <= prod;
+                    ma  <= 25'(o2);
+                    mb  <= g2;
+                end
+                5'd19: begin
                     acc <= mix_sum;
                     ma  <= 25'(nz);
                     mb  <= gn;
                 end
-                5'd10: begin
+                5'd20: begin
                     x  <= sat18(mix_sum >>> 16);
                     ma <= PI_HALF;
                     mb <= $signed({1'b0, incc[31:15]});
                 end
-                5'd11: begin
+                5'd21: begin
                     theta <= 18'(prod >>> 16);
                     ma    <= 25'(18'(prod >>> 16));
                     mb    <= 18'(prod >>> 16);
                 end
-                5'd12: begin
+                5'd22: begin
                     ma <= 25'(18'(prod >>> 17));  // theta^2
                     mb <= theta;
                 end
-                5'd13: begin
+                5'd23: begin
                     ma <= THIRD;
                     mb <= 18'(prod >>> 17);       // theta^3
                 end
-                5'd14: begin
+                5'd24: begin
                     f  <= theta - 18'(prod >>> 16);
                     ma <= 25'(s.bp);
                     mb <= theta - 18'(prod >>> 16);
                     bp <= s.bp;
                     lp <= s.lp;
                 end
-                5'd15, 5'd18: begin  // lp += f * bp; next q * bp
+                5'd25, 5'd28: begin  // lp += f * bp; next q * bp
                     lp <= sat24(43'(lp) + (prod >>> 16));
                     q  <= q_c;
                     ma <= 25'(bp);
                     mb <= q_c;
                 end
-                5'd16, 5'd19: begin  // hp = x - lp - q * bp; next f * hp
+                5'd26, 5'd29: begin  // hp = x - lp - q * bp; next f * hp
                     hp <= hp_c;
                     ma <= 25'(hp_c);
                     mb <= f;
                 end
-                5'd17: begin         // bp += f * hp; next f * bp (second pass)
+                5'd27: begin         // bp += f * hp; next f * bp (second pass)
                     bp <= bp_c;
                     ma <= 25'(bp_c);
                     mb <= f;
                 end
-                5'd20: begin
+                5'd30: begin
                     bp <= bp_c;
                     ma <= 25'(y_c);
                     mb <= a;
                 end
-                5'd21: begin
+                5'd31: begin
                     sum <= sum + 25'(sat18(prod >>> 16));
                     st_mem[v] <= '{ph1: ph1n, ph2: ph2n, e1: e1n, e2: e2n, st1: st1n, st2: st2n,
                                    gprev: gate_r[0], rtprev: gate_r[1], lp: lp, bp: bp};

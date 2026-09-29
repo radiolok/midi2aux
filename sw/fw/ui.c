@@ -39,7 +39,7 @@ static const struct page pages[] = {
     {"РЕВЕРБЕРАЦИЯ", {P_REV_SRC, P_REV_ROOM, P_REV_DAMP}},
     {"РЕВЕРБ., СИНХР. ГЕН.", {P_REV_LVL, P_HSYNC, P_FOLLOW_SRC}},
     {"ДЕТЕКТОР, ВЫХ2", {P_FOLLOW_ATK, P_FOLLOW_REL, P_OUT2_SRC}},
-    {"ПРЕСЕТЫ", {P_PRESET, P_MASTER, P_FX_MIX}},
+    {"ПРЕСЕТЫ", {P_PRESET, P_MASTER, P_BLEP}},
 };
 const int ui_num_pages = sizeof pages / sizeof pages[0];
 

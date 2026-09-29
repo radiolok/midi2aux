@@ -1,6 +1,7 @@
 import math
 
 import numpy as np
+import pytest
 
 from synthmodel import adsr, analysis, clocks, pitch, voice
 from synthmodel.voice import VoiceEngine
@@ -114,3 +115,31 @@ def test_retrigger_toggle_restarts_attack():
     assert e.st[0].st1 == voice.ATTACK
     e.voice(0, e.g)
     assert e.st[0].st1 == voice.ATTACK  # a toggle retriggers once
+
+
+@pytest.mark.parametrize("wave", [voice.SAW, voice.SQUARE])
+def test_polyblep_reduces_aliasing(wave):
+    """Saw / square at 3.5 kHz: PolyBLEP lowers the aliased (non-harmonic) energy by > 12 dB."""
+    import numpy as np
+    from synthmodel.voice import VoiceEngine, env_params
+
+    fs = 48339.84
+    out = {}
+    for b in (0, 1):
+        e = VoiceEngine(1)
+        g = e.g
+        g.wave1, g.g1, g.g2, g.blep = wave, 1 << 15, 0, b
+        g.cutoff, g.res_q = voice.C_MAX, 1 << 17   # filter open, no resonance
+        g.env1 = env_params(0.001, 0.1, 1.0, 0.1, fs)
+        r = e.regs[0]
+        r.pitch1 = voice.cutoff_pitch(3500.0, fs)
+        r.vel_amp, r.gate = 1 << 16, 1
+        x = np.array(e.run(1 << 13)[2000:], dtype=float)
+        spec = np.abs(np.fft.rfft(x * np.hanning(len(x)))) ** 2
+        fr = np.fft.rfftfreq(len(x), 1 / fs)
+        f0 = 3500.0 * 2 ** ((r.pitch1 - voice.cutoff_pitch(3500.0, fs)) / 65536)
+        harm = np.zeros_like(fr, dtype=bool)
+        for k in range(1, int(fs / 2 / f0) + 1):
+            harm |= np.abs(fr - k * f0) < 40
+        out[b] = 10 * np.log10(spec[~harm & (fr > 100)].sum() / spec[harm].sum())
+    assert out[1] < out[0] - 12, out

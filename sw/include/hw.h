@@ -124,6 +124,7 @@
 #define S_INFO             0x54u
 #define S_ENV_VOICE        0x58u
 #define S_HSYNC            0x5Cu /* {osc2, osc1}: hard sync on SYNC edges */
+#define S_BLEP             0x60u /* PolyBLEP on saw / square */
 
 /* modulation unit (fpga/rtl/voice/mod_unit.sv) */
 #define MOD_BASE           0x20020000u

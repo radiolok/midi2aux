@@ -39,6 +39,9 @@ static void test_patch_registers(void)
     CHECK_EQ(hw_read(SYNTH_REG(S_CUTOFF)), hz_pitch(&FS, 16000));
     synth_set_param(&s, P_WAVE1, 3);
     CHECK_EQ(hw_read(SYNTH_REG(S_WAVES)), 3);
+    CHECK_EQ(hw_read(SYNTH_REG(S_BLEP)), 0);
+    synth_set_param(&s, P_BLEP, 1);
+    CHECK_EQ(hw_read(SYNTH_REG(S_BLEP)), 1);
 }
 
 static void test_param_table(void)

@@ -125,7 +125,9 @@ RTL: `mem/mem_arb.sv`, `mem/mem_bram.sv`, `mem/sdram_ctrl.sv`, `avk/slot_delay.s
 ## Этап 8: хорус, реверберация, жёсткая синхронизация, детектор огибающей
 
 RTL: `avk/slot_chorus.sv`, `avk/slot_reverb.sv`; `voice/voice_engine.sv` — регистр HSYNC и вход
-`sync_edge`; `voice/mod_unit.sv` — детектор огибающей (источник 10). Юнит-тесты: слоты бит-в-бит
+`sync_edge`, регистр BLEP (PolyBLEP для пилы и меандра, 32 такта на голос); `voice/mod_unit.sv` —
+детектор огибающей (источник 10). PolyBLEP проверяется бит-в-бит в `unit/test_voice_engine.py` и по
+спектру в модели (`model/tests/test_voice.py`: наложение −14…−15 дБ). Юнит-тесты: слоты бит-в-бит
 (`unit/test_avk_bus.py::test_fx_bus_chorus_reverb`), жёсткая синхронизация в `unit/test_voice_engine.py`,
 детектор в `unit/test_mod_unit.py`.
 

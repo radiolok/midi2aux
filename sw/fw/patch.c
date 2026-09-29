@@ -81,6 +81,7 @@ const struct param_desc param_table[P_COUNT] = {
     [P_FOLLOW_SRC] = {"follsrc", "Детектор вход", 0, 1, 0, U_ENUM, in_names},
     [P_FOLLOW_ATK] = {"follatk", "Детектор атака", 1, 1000, 5, U_MS, 0},
     [P_FOLLOW_REL] = {"follrel", "Детектор спад", 1, 5000, 100, U_MS, 0},
+    [P_BLEP]      = {"blep", "Антиалиасинг", 0, 1, 0, U_ENUM, onoff_names},
     [P_PRESET]    = {"preset", "Пресет (2:загр 3:зап)", 0, 99, 1, U_NONE, 0},
 };
 

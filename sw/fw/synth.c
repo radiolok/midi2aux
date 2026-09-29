@@ -37,6 +37,7 @@ void synth_apply_patch(struct synth *s)
     const int32_t *v = s->p.v;
     uint32_t c = hz_pitch(&s->fs, (uint32_t)v[P_CUTOFF]);
     hw_write(SYNTH_REG(S_WAVES), (uint32_t)(v[P_WAVE2] & 3) << 2 | (v[P_WAVE1] & 3));
+    hw_write(SYNTH_REG(S_BLEP), (uint32_t)v[P_BLEP]);
     hw_write(SYNTH_REG(S_PW), pct_q16(v[P_PW]));
     hw_write(SYNTH_REG(S_G1), pct_q16(v[P_MIX1]));
     hw_write(SYNTH_REG(S_G2), pct_q16(v[P_MIX2]));
