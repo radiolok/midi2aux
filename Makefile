@@ -11,6 +11,7 @@
 #   make test    lint + model + swtest + unit + sim
 #   make luts    regenerate RTL tables from the Python model
 #   make plots   refresh the plots committed for fpga/sim/README.md and fpga/model/README.md
+#   make readme-img   pictures of the top-level README.md (models + firmware menu) -> img/readme/
 #   make bitstream-9k / bitstream-20k [CORE=synth|mono]   Gowin EDA (gw_sh), local only
 
 PYTHON    ?= python3
@@ -25,7 +26,7 @@ CORES     := stub_core mono_core synth_core
 GOWIN_STUBS := fpga/sim/gowin_stubs/rPLL.v
 PYTEST    ?= $(PYTHON) -m pytest -q
 
-.PHONY: all test lint unit sim model refs fw swtest bootrom luts plots clean bitstream-9k bitstream-20k
+.PHONY: all test lint unit sim model refs fw swtest bootrom luts plots readme-img clean bitstream-9k bitstream-20k
 
 all: test fw
 
@@ -53,6 +54,9 @@ refs:
 
 luts:
 	cd fpga/model && $(PYTHON) -m synthmodel.luts
+
+readme-img:
+	$(PYTHON) fpga/model/readme_figs.py
 
 plots: sim refs
 	cp $(BUILD)/sim/stub_core/stub_core.png $(BUILD)/sim/mono_core/mono_core.png \

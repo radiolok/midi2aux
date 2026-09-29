@@ -8,8 +8,8 @@
 
 | Подпроект | Статус | Где |
 |---|---|---|
-| **MIDI2AUX**: одноголосный MIDI → звук на Arduino Nano (ATmega328P) | готов, поддерживается | `fw/`, `platformio.ini`, `README.md` |
-| **FPGA-синтезатор / процессор эффектов** на Tang Nano 20K (макет — 9K): полифония, ADSR, фильтр, эффекты на кольцевом буфере, связь с АВК в обе стороны | этап проектирования | `.plans/fpga-synth/`; далее `fpga/`, `sw/`, `hw/` |
+| **MIDI2AUX**: одноголосный MIDI → звук на Arduino Nano (ATmega328P) | готов, поддерживается | `fw/`, `platformio.ini`, `docs/midi2aux.md` |
+| **FPGA-синтезатор / процессор эффектов** на Tang Nano 20K (макет — 9K): полифония, ADSR, фильтр, эффекты на кольцевом буфере, связь с АВК в обе стороны | этапы 0–9 готовы в симуляции, железо — в работе; описание — `README.md` | ``fpga/`, `sw/`, `.plans/fpga-synth/`; `hw/` — план |
 
 Предыстория АВК-6 и MIDI2AUX — статья автора на Habr (timeweb, «Персональный аналоговый компьютер АВК-6»).
 
@@ -25,13 +25,14 @@
 ## Структура репозитория
 
 ```
-fw/src/            # прошивка MIDI2AUX (Arduino, C++)
+fw/src/            # прошивка MIDI2AUX (Arduino, C++); её README — docs/midi2aux.md
+img/readme/        # картинки README.md (make readme-img)
 platformio.ini     # сборка MIDI2AUX
 .plans/            # планы и ТЗ (markdown, на русском)
   midi2aux-firmware.md
   fpga-synth/
 fpga/              # RTL: rtl/, boards/ (9K, 20K), sim/ (Verilator), model/ (Python); см. fpga/README.md
-sw/                # прошивка софт-процессора RISC-V на C (пока заглушка)
+sw/                # прошивка софт-процессора RISC-V на C
 hw/                # (план) KiCad: схема, плата, панель
 Makefile           # lint, sim, model, fw, test для FPGA-синтезатора
 .github/workflows/ # CI: fpga-synth.yml
@@ -40,7 +41,7 @@ Makefile           # lint, sim, model, fw, test для FPGA-синтезатор
 
 ## Сборка и проверка
 
-MIDI2AUX собирается PlatformIO (см. `README.md`); для работы над FPGA-синтезатором PlatformIO не нужен и в CI не входит.
+MIDI2AUX собирается PlatformIO (см. `docs/midi2aux.md`); для работы над FPGA-синтезатором PlatformIO не нужен и в CI не входит.
 
 **FPGA-синтезатор** (подробно — `fpga/README.md`), из корня:
 - `make lint` — `verilator --lint-only -Wall` (ядро и board-top с заглушками примитивов Gowin);
