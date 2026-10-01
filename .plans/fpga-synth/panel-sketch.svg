@@ -40,9 +40,13 @@
       <circle cx="110" cy="24" r="1.5" fill="#e33" stroke="#600" stroke-width="0.2"/><text x="110" y="28.3">−10</text>
     </g>
 
-    <!-- MIDI TRS -->
-    <circle cx="86" cy="47" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="86" cy="47" r="1.8" fill="#111"/>
-    <text x="86" y="54.5">MIDI</text>
+    <!-- MIDI TRS — слева, к входам -->
+    <circle cx="20" cy="50" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="20" cy="50" r="1.8" fill="#111"/>
+    <text x="26" y="51" text-anchor="start">MIDI</text>
+
+    <!-- линейный выход TRS — справа, к выходам -->
+    <circle cx="90" cy="48" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="90" cy="48" r="1.8" fill="#111"/>
+    <text x="90" y="55.5">ЛИН. ВЫХ</text>
 
     <!-- дисплей 1.14" -->
     <rect x="7" y="57" width="36" height="25" rx="1" fill="#444"/>
