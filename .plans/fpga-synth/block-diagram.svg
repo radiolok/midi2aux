@@ -28,11 +28,15 @@
 <rect x="760" y="34" width="170" height="44" rx="6" fill="#d9f2d9" stroke="#2e7d32" stroke-width="1.4"/>
 <text x="845.0" y="52.7" font-size="12" text-anchor="middle" font-weight="bold">REF 2.5 В (REF3025)</text>
 <text x="845.0" y="67.7" font-size="10.5" text-anchor="middle">опора АЦП + смещение</text>
+<rect x="760" y="86" width="170" height="44" rx="6" fill="#fff3b0" stroke="#9a7d00" stroke-width="1.4"/>
+<text x="845.0" y="104.7" font-size="12" text-anchor="middle" font-weight="bold">LDO 3.3H (300 мА)</text>
+<text x="845.0" y="119.7" font-size="10.5" text-anchor="middle">усилитель наушников</text>
 <polyline points="160,82 190,82" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="350,82 365,82 365,56 380,56" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="350,82 365,82 365,108 380,108" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="540,56 555,56 555,108 570,108" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="555,56 570,56" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
+<polyline points="555,108 555,140 745,140 745,108 760,108" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="730,56 760,56" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <text x="1060" y="30" font-size="12" text-anchor="start" fill="#222" font-weight="bold">Домены питания:</text>
 <rect x="1060" y="44" width="22" height="16" rx="3" fill="#fde2c8" stroke="#b5651d"/>
@@ -212,7 +216,7 @@
 <text x="1120.0" y="384.55" font-size="11.5" text-anchor="middle">выход DC</text>
 <text x="1120.0" y="400.55" font-size="11.5" text-anchor="middle">±2.97 В пик = FS</text>
 <text x="1120.0" y="416.55" font-size="11.5" text-anchor="middle"></text>
-<text x="1120.0" y="432.55" font-size="11.5" text-anchor="middle">L → ВЫХ, ЛИН.</text>
+<text x="1120.0" y="432.55" font-size="11.5" text-anchor="middle">L → ВЫХ, НАУШН.</text>
 <text x="1120.0" y="448.55" font-size="11.5" text-anchor="middle">R → ВЫХ2</text>
 <polyline points="955,590 1038,590 1038,440 1060,440" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <text x="960" y="584" font-size="10" text-anchor="start" fill="#444">I2S: BCK, LRCK, DIN</text>
@@ -224,7 +228,7 @@
 <text x="1265.0" y="276.2" font-size="10.5" text-anchor="middle">max = ×1</text>
 <rect x="1355" y="230" width="145" height="54" rx="6" fill="#fde2c8" stroke="#b5651d" stroke-width="1.4"/>
 <text x="1427.5" y="246.2" font-size="12" text-anchor="middle" font-weight="bold">ОУ ×4.24</text>
-<text x="1427.5" y="261.2" font-size="10.5" text-anchor="middle">OPA4171 (A), ±15 В</text>
+<text x="1427.5" y="261.2" font-size="10.5" text-anchor="middle">OPA2171 (A), ±15 В</text>
 <text x="1427.5" y="276.2" font-size="10.5" text-anchor="middle">ФНЧ 49 кГц</text>
 <rect x="1520" y="230" width="105" height="54" rx="6" fill="#e9e9e9" stroke="#555" stroke-width="1.4"/>
 <text x="1572.5" y="246.2" font-size="12" text-anchor="middle" font-weight="bold">ВЫХ</text>
@@ -244,21 +248,21 @@
 <text x="1572.5" y="356.2" font-size="10.5" text-anchor="middle">на панели</text>
 <polyline points="1510,257 1510,297 1427.5,297 1427.5,310" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <polyline points="1500,337 1520,337" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="1355" y="390" width="145" height="54" rx="6" fill="#fde2c8" stroke="#b5651d" stroke-width="1.4"/>
-<text x="1427.5" y="406.2" font-size="12" text-anchor="middle" font-weight="bold">ОУ ×0.5</text>
-<text x="1427.5" y="421.2" font-size="10.5" text-anchor="middle">OPA4171 (B)</text>
-<text x="1427.5" y="436.2" font-size="10.5" text-anchor="middle">+ 10 мкФ, 100 Ом</text>
+<rect x="1355" y="390" width="145" height="54" rx="6" fill="#d9f2d9" stroke="#2e7d32" stroke-width="1.4"/>
+<text x="1427.5" y="406.2" font-size="12" text-anchor="middle" font-weight="bold">Усил. наушников</text>
+<text x="1427.5" y="421.2" font-size="10.5" text-anchor="middle">TPA6132A2, 3.3H</text>
+<text x="1427.5" y="436.2" font-size="10.5" text-anchor="middle">вход: 1 мкФ, ×0.5</text>
 <rect x="1520" y="390" width="105" height="54" rx="6" fill="#e9e9e9" stroke="#555" stroke-width="1.4"/>
-<text x="1572.5" y="406.2" font-size="12" text-anchor="middle" font-weight="bold">ЛИН. ВЫХ</text>
+<text x="1572.5" y="406.2" font-size="12" text-anchor="middle" font-weight="bold">НАУШН./ЛИН.</text>
 <text x="1572.5" y="421.2" font-size="10.5" text-anchor="middle">TRS 3.5 мм</text>
-<text x="1572.5" y="436.2" font-size="10.5" text-anchor="middle">моно на T и R</text>
+<text x="1572.5" y="436.2" font-size="10.5" text-anchor="middle">16–600 Ом</text>
 <polyline points="1265.0,284 1265.0,417 1355,417" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <text x="1259.0" y="408" font-size="10.5" text-anchor="end" fill="#444">движок</text>
 <text x="1259.0" y="421" font-size="10.5" text-anchor="end" fill="#444">громкости</text>
 <polyline points="1500,417 1520,417" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#ah)"/>
 <rect x="1355" y="475" width="145" height="54" rx="6" fill="#fde2c8" stroke="#b5651d" stroke-width="1.4"/>
 <text x="1427.5" y="491.2" font-size="12" text-anchor="middle" font-weight="bold">ОУ ×4.24</text>
-<text x="1427.5" y="506.2" font-size="10.5" text-anchor="middle">OPA4171 (C)</text>
+<text x="1427.5" y="506.2" font-size="10.5" text-anchor="middle">OPA2171 (B)</text>
 <text x="1427.5" y="521.2" font-size="10.5" text-anchor="middle">без регулятора</text>
 <rect x="1520" y="475" width="105" height="54" rx="6" fill="#e9e9e9" stroke="#555" stroke-width="1.4"/>
 <text x="1572.5" y="491.2" font-size="12" text-anchor="middle" font-weight="bold">ВЫХ2</text>
@@ -271,9 +275,8 @@
 <text x="1120" y="620" font-size="11.5" text-anchor="start" fill="#444">LFO1/2, огибающая, gate, pitch CV, velocity,</text>
 <text x="1120" y="637" font-size="11.5" text-anchor="start" fill="#444">выход любого слота шины сигналов.</text>
 <text x="1120" y="654" font-size="11.5" text-anchor="start" fill="#444"></text>
-<text x="1120" y="671" font-size="11.5" text-anchor="start" fill="#444">ЛИН. ВЫХ — готовый звук для записи / усилителя:</text>
-<text x="1120" y="688" font-size="11.5" text-anchor="start" fill="#444">после громкости, развязан по постоянному току,</text>
-<text x="1120" y="705" font-size="11.5" text-anchor="start" fill="#444">уровень ≈ 1 В rms (линейный, не наушники).</text>
-<text x="1120" y="722" font-size="11.5" text-anchor="start" fill="#444"></text>
-<text x="1120" y="739" font-size="11.5" text-anchor="start" fill="#444">OPA4171 (D) — резерв.</text>
+<text x="1120" y="671" font-size="11.5" text-anchor="start" fill="#444">НАУШН./ЛИН. — готовый звук: наушники 16–600 Ом</text>
+<text x="1120" y="688" font-size="11.5" text-anchor="start" fill="#444">или линейный вход; после громкости,</text>
+<text x="1120" y="705" font-size="11.5" text-anchor="start" fill="#444">развязан по постоянному току, моно на T и R,</text>
+<text x="1120" y="722" font-size="11.5" text-anchor="start" fill="#444">защита от КЗ (моно-штекер TS).</text>
 </svg>
