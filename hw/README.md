@@ -6,6 +6,8 @@
 ![Структурная схема](../img/readme/block-diagram.png)
 
 Исходные данные:
+- **принципиальная схема по узлам** (листы KiCad, позиционные обозначения, номиналы, подключение по выводам, расчёты) —
+  [`schematic.md`](schematic.md);
 - требования к узлам, номиналы, открытые вопросы `HO-xx` — [`.plans/fpga-synth/hw-requirements.md`](../.plans/fpga-synth/hw-requirements.md);
 - структурная схема — [`.plans/fpga-synth/block-diagram.svg`](../.plans/fpga-synth/block-diagram.svg)
   (генерируется `.plans/fpga-synth/tools-gen-block-diagram.py`);
