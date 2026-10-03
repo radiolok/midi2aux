@@ -114,13 +114,13 @@
       (width 0.1524)
       (type solid))
     (fill (color 0 0 0 0))
-    (uuid "762d9a96-411e-57a6-9d28-7e1264b2b66e")
-    (property "Sheetname" "ain1"
+    (uuid "cd81652e-5657-5220-81ce-af0dd1231e28")
+    (property "Sheetname" "analog_in"
       (at 305 39.3 0)
       (effects
         (font (size 1.27 1.27))
         (justify left bottom)))
-    (property "Sheetfile" "ain1.kicad_sch"
+    (property "Sheetfile" "analog_in.kicad_sch"
       (at 305 70.6 0)
       (effects
         (font (size 1.27 1.27))
@@ -128,12 +128,12 @@
     (instances
       (project "avk_synth"
         (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "5")))))
-  (text "Входной каскад ВХ1"
+  (text "Аналоговые входы ВХ1, ВХ2 и АЦП"
     (at 307 56 0)
     (effects
       (font (size 1.5 1.5))
       (justify left bottom))
-    (uuid "f39d0b0c-b9b3-504a-b0b7-4944b138e872"))
+    (uuid "15dc2e4a-0b68-596f-a7fa-bf997d2fdcf2"))
   (sheet
     (at 20 85)
     (size 80 30)
@@ -142,13 +142,13 @@
       (width 0.1524)
       (type solid))
     (fill (color 0 0 0 0))
-    (uuid "87c77c8a-ce4a-5677-93f8-2a882592e335")
-    (property "Sheetname" "ain2"
+    (uuid "2f5eea64-ba3c-5f9c-b046-66ce3d14670c")
+    (property "Sheetname" "audio_out"
       (at 20 84.3 0)
       (effects
         (font (size 1.27 1.27))
         (justify left bottom)))
-    (property "Sheetfile" "ain2.kicad_sch"
+    (property "Sheetfile" "audio_out.kicad_sch"
       (at 20 115.6 0)
       (effects
         (font (size 1.27 1.27))
@@ -156,12 +156,12 @@
     (instances
       (project "avk_synth"
         (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "6")))))
-  (text "Входной каскад ВХ2"
+  (text "ЦАП, выходы ВЫХ / ВЫХ2, индикаторы перегрузки"
     (at 22 101 0)
     (effects
       (font (size 1.5 1.5))
       (justify left bottom))
-    (uuid "4e2aa306-5f00-57ac-8eb3-2853ec20b11c"))
+    (uuid "a8daf19e-5cc9-50cb-aaf8-aacd5824ce98"))
   (sheet
     (at 115 85)
     (size 80 30)
@@ -170,13 +170,13 @@
       (width 0.1524)
       (type solid))
     (fill (color 0 0 0 0))
-    (uuid "58fd7c11-8062-5e70-8503-5c2a754d5b10")
-    (property "Sheetname" "adc"
+    (uuid "d61e0bdd-c892-52bb-99e5-c12831b35f17")
+    (property "Sheetname" "phones"
       (at 115 84.3 0)
       (effects
         (font (size 1.27 1.27))
         (justify left bottom)))
-    (property "Sheetfile" "adc.kicad_sch"
+    (property "Sheetfile" "phones.kicad_sch"
       (at 115 115.6 0)
       (effects
         (font (size 1.27 1.27))
@@ -184,12 +184,12 @@
     (instances
       (project "avk_synth"
         (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "7")))))
-  (text "АЦП входов: 2 × AD7091R"
+  (text "Выход на наушники / линейный (TPA6132A2)"
     (at 117 101 0)
     (effects
       (font (size 1.5 1.5))
       (justify left bottom))
-    (uuid "a46a2dc6-a8af-5629-bd2a-04a2f178aa22"))
+    (uuid "f68590ec-40ec-59fb-8f58-a87a8e6a0f64"))
   (sheet
     (at 210 85)
     (size 80 30)
@@ -198,13 +198,13 @@
       (width 0.1524)
       (type solid))
     (fill (color 0 0 0 0))
-    (uuid "600dd6cb-4e27-528c-83c1-c4ae05b1aa94")
-    (property "Sheetname" "dac"
+    (uuid "b117eed6-bc82-51e6-b1dc-41baa3c8c589")
+    (property "Sheetname" "panel"
       (at 210 84.3 0)
       (effects
         (font (size 1.27 1.27))
         (justify left bottom)))
-    (property "Sheetfile" "dac.kicad_sch"
+    (property "Sheetfile" "panel.kicad_sch"
       (at 210 115.6 0)
       (effects
         (font (size 1.27 1.27))
@@ -212,94 +212,10 @@
     (instances
       (project "avk_synth"
         (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "8")))))
-  (text "ЦАП PCM5102A"
+  (text "Панель: потенциометры, MCP3208, энкодеры, дисплей, штыри"
     (at 212 101 0)
     (effects
       (font (size 1.5 1.5))
       (justify left bottom))
-    (uuid "04d7ea8f-80e3-587d-a16f-feda37fbb14c"))
-  (sheet
-    (at 305 85)
-    (size 80 30)
-    (fields_autoplaced)
-    (stroke
-      (width 0.1524)
-      (type solid))
-    (fill (color 0 0 0 0))
-    (uuid "141483ce-90b3-53da-bbc4-81f6c077dc47")
-    (property "Sheetname" "aout"
-      (at 305 84.3 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left bottom)))
-    (property "Sheetfile" "aout.kicad_sch"
-      (at 305 115.6 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left top)))
-    (instances
-      (project "avk_synth"
-        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "9")))))
-  (text "Выходы ВЫХ, ВЫХ2 и индикаторы перегрузки"
-    (at 307 101 0)
-    (effects
-      (font (size 1.5 1.5))
-      (justify left bottom))
-    (uuid "c455067c-11a0-5880-afbc-eedc346e7a5e"))
-  (sheet
-    (at 20 130)
-    (size 80 30)
-    (fields_autoplaced)
-    (stroke
-      (width 0.1524)
-      (type solid))
-    (fill (color 0 0 0 0))
-    (uuid "bcb1ef56-357f-56d1-ad58-ba5235893995")
-    (property "Sheetname" "hp"
-      (at 20 129.3 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left bottom)))
-    (property "Sheetfile" "hp.kicad_sch"
-      (at 20 160.6 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left top)))
-    (instances
-      (project "avk_synth"
-        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "10")))))
-  (text "Выход на наушники / линейный (TPA6132A2)"
-    (at 22 146 0)
-    (effects
-      (font (size 1.5 1.5))
-      (justify left bottom))
-    (uuid "cc5976a2-f6df-587b-9044-04d9d9a766d0"))
-  (sheet
-    (at 115 130)
-    (size 80 30)
-    (fields_autoplaced)
-    (stroke
-      (width 0.1524)
-      (type solid))
-    (fill (color 0 0 0 0))
-    (uuid "b117eed6-bc82-51e6-b1dc-41baa3c8c589")
-    (property "Sheetname" "panel"
-      (at 115 129.3 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left bottom)))
-    (property "Sheetfile" "panel.kicad_sch"
-      (at 115 160.6 0)
-      (effects
-        (font (size 1.27 1.27))
-        (justify left top)))
-    (instances
-      (project "avk_synth"
-        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "11")))))
-  (text "Панель: потенциометры, MCP3208, энкодеры, дисплей, штыри"
-    (at 117 146 0)
-    (effects
-      (font (size 1.5 1.5))
-      (justify left bottom))
-    (uuid "ababa4de-f9e2-52d4-8ec8-3c67d4b4ec68"))
+    (uuid "3eeb387f-eead-5410-8f17-d58d0e78f0de"))
   (sheet_instances (path "/" (page "1"))))

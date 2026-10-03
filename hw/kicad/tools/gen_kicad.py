@@ -218,15 +218,15 @@ def adc(ref, vin, sdo, caps):
 
 FP['MSOP-10'] = 'Package_SO:MSOP-10_3x3mm_P0.5mm'
 sheet('adc', 'АЦП входов: 2 × AD7091R', [
-    ('ВХ1 → U501', adc('U501', 'AIN1', 'adc_sdo1', ('C501', 'C502', 'C505', 'C507', 'C509'))),
-    ('ВХ2 → U502', adc('U502', 'AIN2', 'adc_sdo2', ('C503', 'C504', 'C506', 'C508', 'C510'))),
-    ('Опора: внешняя REF2V5 (вариант по HO-09)', [R('R501', '0', 'REF2V5', 'REFIN_ADC')]),
+    ('АЦП ВХ1: U501 AD7091R', adc('U501', 'AIN1', 'adc_sdo1', ('C501', 'C502', 'C505', 'C507', 'C509'))),
+    ('АЦП ВХ2: U502 AD7091R', adc('U502', 'AIN2', 'adc_sdo2', ('C503', 'C504', 'C506', 'C508', 'C510'))),
+    ('Опора АЦП: внешняя REF2V5 (вариант по HO-09)', [R('R501', '0', 'REF2V5', 'REFIN_ADC')]),
 ], notes=['ВНИМАНИЕ: номера выводов символа AD7091R не проверены — сверить с даташитом (HO-09).',
           'Общие CONVST / CS / SCLK — одновременная выборка (Т-7.1). Номиналы на REFIN и REGCAP — по даташиту.'])
 
 # --- dac
 sheet('dac', 'ЦАП PCM5102A', [
-    ('PCM5102A: I2S, FLT = low latency, SCK на GND (PLL от BCK)', [
+    ('ЦАП PCM5102A: I2S, FLT = low latency, SCK на GND (PLL от BCK)', [
         Part('U601', 'Audio:PCM5102A', 'PCM5102A', 'TSSOP20',
              {1: '3V3A', 2: 'DAC_CAPP', 3: 'GND', 4: 'DAC_CAPM', 5: 'DAC_VNEG', 6: 'DAC_OUTL', 7: 'DAC_OUTR',
               8: '3V3A', 9: 'GND', 10: 'GND', 11: '3V3D', 12: 'GND', 13: 'i2s_bck', 14: 'i2s_din', 15: 'i2s_lrck',
@@ -237,7 +237,7 @@ sheet('dac', 'ЦАП PCM5102A', [
         C('C609', '1u', 'DAC_LDOO', 'GND'),
         C('C610', '100n', '3V3D', 'GND'), C('C611', '10u', '3V3D', 'GND', 'C0805'),
         R('R603', '1k', 'dac_xsmt', 'DAC_XSMT'), R('R604', '10k', 'DAC_XSMT', 'GND')]),
-    ('Выходные RC (рекомендация даташита)', [
+    ('ЦАП: выходные RC (рекомендация даташита)', [
         R('R601', '470', 'DAC_OUTL', 'DAC_L'), C('C605', '2.2n C0G', 'DAC_L', 'GND'),
         R('R602', '470', 'DAC_OUTR', 'DAC_R'), C('C606', '2.2n C0G', 'DAC_R', 'GND'),
         TP('TP601', 'DAC_L'), TP('TP602', 'DAC_R')]),
@@ -286,12 +286,12 @@ sheet('aout', 'Выходы ВЫХ, ВЫХ2 и индикаторы перегр
 
 # --- hp
 sheet('hp', 'Выход на наушники / линейный (TPA6132A2)', [
-    ('Вход: ×0.5 и разделительные конденсаторы (несимметричное включение)', [
+    ('Наушники: вход ×0.5 и разделительные конденсаторы', [
         R('R801', '10k', 'VOL_W', 'HP_IN'), R('R802', '10k', 'HP_IN', 'GND'),
         C('C801', '1u', 'HP_IN', 'HP_INLP', 'C0805'), C('C808', '1u', 'HP_INLM', 'GND', 'C0805'),
         C('C802', '1u', 'HP_IN', 'HP_INRP', 'C0805'), C('C809', '1u', 'HP_INRM', 'GND', 'C0805'),
         TP('TP801', 'HP_IN')]),
-    ('TPA6132A2 (Т-9a)', [
+    ('Наушники: усилитель TPA6132A2 (Т-9a)', [
         Part('U801', 'Amplifier_Audio:TPA6132A2RTE', 'TPA6132A2', 'WQFN16',
              {2: 'HP_INLP', 1: 'HP_INLM', 3: 'HP_INRP', 4: 'HP_INRM', 16: 'HP_OUTL', 5: 'HP_OUTR',
               13: 'HP_EN', 6: 'HP_G0', 7: 'HP_G1', 14: '3V3H', 12: 'HP_HPVDD', 8: 'HP_HPVSS',
@@ -300,7 +300,7 @@ sheet('hp', 'Выход на наушники / линейный (TPA6132A2)', [
         C('C804', '1u', 'HP_CPP', 'HP_CPN'), C('C805', '1u', 'HP_HPVSS', 'GND'), C('C810', '1u', 'HP_HPVDD', 'GND'),
         R('R804', '0', 'HP_G0', 'GND'), R('R805', '0', 'HP_G1', 'GND'),
         R('R803', '10k', 'dac_xsmt', 'HP_EN'), C('C803', '1u', 'HP_EN', 'GND')]),
-    ('Гнездо НАУШН./ЛИН.', [
+    ('Наушники: гнездо НАУШН./ЛИН.', [
         Part('J801', 'Connector_Audio:AudioJack3', 'НАУШН./ЛИН.', 'JACK', {'T': 'HP_OUTL', 'R': 'HP_OUTR', 'S': 'GND'}),
         Part('D801', 'Device:D_TVS', 'PESD5V0S1BA', 'SOD323', {1: 'HP_OUTL', 2: 'GND'}),
         Part('D802', 'Device:D_TVS', 'PESD5V0S1BA', 'SOD323', {1: 'HP_OUTR', 2: 'GND'})]),
@@ -344,6 +344,24 @@ sheet('panel', 'Панель: потенциометры, MCP3208, энкоде�
         Part('J914', 'Connector_Generic:Conn_01x01', 'ВЫХ2', 'WIRE', {1: 'OUT2'})]),
 ], notes=['Порядок выводов J901 — по выбранному модулю дисплея. Если вход BLK — анод подсветки, а не логический, '
           'нужен ключ (Т-13.2).', 'Порядок каналов MCP3208 = порядок ручек в прошивке.'])
+
+
+
+
+def merge(name, title, names):
+    groups, notes = [], []
+    for n in names:
+        sh = SHEETS.pop(n)
+        groups += sh['groups']
+        notes += sh['notes']
+    SHEETS[name] = dict(title=title, groups=groups, notes=notes)
+
+
+merge('analog_in', 'Аналоговые входы ВХ1, ВХ2 и АЦП', ['ain1', 'ain2', 'adc'])
+merge('audio_out', 'ЦАП, выходы ВЫХ / ВЫХ2, индикаторы перегрузки', ['dac', 'aout'])
+merge('phones', 'Выход на наушники / линейный (TPA6132A2)', ['hp'])
+for _n in ('power', 'fpga', 'midi_sync', 'analog_in', 'audio_out', 'phones', 'panel'):
+    SHEETS.move_to_end(_n)
 
 
 # ------------------------------------------------------------------ символы
@@ -482,37 +500,48 @@ def label_text(net):
     return net
 
 
-def plan_sheet(sh, maxw=395.0):
-    """Список (inst, X, Y) — координаты листа (Y вниз), плюс заголовки групп."""
-    placed, titles = [], []
-    y = 22.0 + 4.0 * len(sh['notes'])
+def layout_block(parts, maxw):
+    """Раскладка деталей блока рядами. Возвращает [(inst, rx, ry, ex0, ey0)], ширину, высоту."""
+    out, x, y, rowh, right = [], 0.0, 0.0, 0.0, 0.0
+    for part in parts:
+        pt = pin_table(part.lib)
+        byunit = defaultdict(dict)
+        for num, net in part.pins.items():
+            if num not in pt:
+                raise KeyError(f'{part.ref}: нет вывода {num} в {part.lib}')
+            byunit[pt[num][0]][num] = net
+        for unit, pins in sorted(byunit.items()):
+            inst = Inst(part, unit, pins)
+            ex0, ex1, ey0, ey1 = inst.extents(pt)
+            w, h = ex1 - ex0, ey1 - ey0
+            if x + w > maxw and x > 0:
+                x, y, rowh = 0.0, y + rowh + 5, 0.0
+            out.append((inst, x, y, ex0, ey0))
+            x += w + 5
+            right = max(right, x - 5)
+            rowh = max(rowh, h)
+    return out, right, y + rowh
+
+
+BLOCK_W = 185.0
+
+
+def plan_sheet(sh, page_w, page_h, block_w=185.0):
+    """Блоки (группы) раскладываются полками; детали внутри блока — рядами."""
+    placed, frames = [], []
+    top = 22.0 + 4.0 * len(sh['notes'])
+    x, y, shelf = 17.0, top, 0.0
     for gtitle, parts in sh['groups']:
-        titles.append((gtitle, 20.0, y))
-        y += 4
-        x = 20.0
-        rowh = 0
-        for part in parts:
-            pt = pin_table(part.lib)
-            byunit = defaultdict(dict)
-            for num, net in part.pins.items():
-                if num not in pt:
-                    raise KeyError(f'{part.ref}: нет вывода {num} в {part.lib}')
-                byunit[pt[num][0]][num] = net
-            for unit, pins in sorted(byunit.items()):
-                inst = Inst(part, unit, pins)
-                ex0, ex1, ey0, ey1 = inst.extents(pt)
-                w, h = ex1 - ex0, ey1 - ey0
-                if x + w > maxw and x > 20.0:
-                    x = 20.0
-                    y += rowh + 6
-                    rowh = 0
-                X = snap(x - ex0) + G
-                Y = snap(y - ey0) + G
-                placed.append((inst, X, Y))
-                x += w + 6
-                rowh = max(rowh, h)
-        y += rowh + 12
-    return placed, titles, y
+        insts, bw, bh = layout_block(parts, min(block_w, page_w - 30))
+        fw, fh = max(bw, len(gtitle) * 1.7) + 6, bh + 11
+        if x + fw > page_w - 12 and x > 17.0:
+            x, y, shelf = 17.0, y + shelf + 6, 0.0
+        for inst, rx, ry, ex0, ey0 in insts:
+            placed.append((inst, snap(x + 3 + rx - ex0) + G, snap(y + 8 + ry - ey0) + G))
+        frames.append((gtitle, x, y, x + fw, y + fh))
+        x += fw + 6
+        shelf = max(shelf, fh)
+    return placed, frames, y + shelf
 
 
 # ------------------------------------------------------------------ вывод S-выражений
@@ -548,14 +577,24 @@ GND_ANG = {(0, 1): 0, (0, -1): 180, (1, 0): 90, (-1, 0): 270}
 
 
 def render_sheet(name, sh, root_uuid, sheet_uuid, global_nets, page):
-    for paper, maxw, maxh in (('A3', 395.0, 270), ('A2', 565.0, 390), ('A1', 810.0, 560)):
-        placed, titles, height = plan_sheet(sh, maxw)
-        if height < maxh:
+    best = None
+    for paper, pw, ph in (('A3', 410.0, 255), ('A2', 584.0, 375), ('A1', 831.0, 545)):
+        for bw in (185.0, 150.0, 230.0, 125.0, 280.0):
+            placed, titles, height = plan_sheet(sh, pw, ph, bw)
+            if height < ph:
+                best = (paper, placed, titles)
+                break
+        if best:
             break
+    paper, placed, titles = best
     items, libs_used, pwr_count = [], set(), [0]
     path = f'/{root_uuid}/{sheet_uuid}'
-    for t, x, y in titles:
-        items.append(text(t, x, y, 1.8, key=(name,), bold=True))
+    for t, x0, y0, x1, y1 in titles:
+        items.append(text(t, x0 + 2, y0 + 3.5, 1.8, key=(name,), bold=True))
+        pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+        items.append([S('polyline'), [S('pts')] + [[S('xy'), a, b] for a, b in pts],
+                      [S('stroke'), [S('width'), 0.3], [S('type'), S('dash')], [S('color'), 72, 72, 160, 1]],
+                      [S('uuid'), uid('frame', name, t)]])
     items.append(text(sh['title'], 20, 17, 2.5, key=(name, 'title'), bold=True))
     for i, n in enumerate(sh['notes']):
         items.append(text(n, 20, 22 + i * 4, 1.5, key=(name, 'note')))
