@@ -1,0 +1,305 @@
+(kicad_sch
+  (version 20230121)
+  (generator eeschema)
+  (uuid "32f38c40-2b50-5c71-84ba-2b066e9f8d2d")
+  (paper "A3")
+  (title_block
+    (title "Несущая плата FPGA-синтезатора АВК-6")
+    (date "2026-10-03")
+    (rev "0.1")
+    (company "АВК-6 «Музыкальная пауза»")
+    (comment 1 "Сгенерировано hw/kicad/tools/gen_kicad.py"))
+  (lib_symbols)
+  (text "Несущая плата FPGA-синтезатора АВК-6 — листы схемы"
+    (at 20 25 0)
+    (effects
+      (font (size 3 3) bold)
+      (justify left bottom))
+    (uuid "61ead451-0ac8-5fe5-be98-4c2ee41b9601"))
+  (text "Описание узлов, расчёты и номиналы: hw/schematic.md.  Открытые вопросы: HO-01 (выводы Tang Nano), HO-06 (нижний разъём), HO-09 (AD7091R)."
+    (at 20 30 0)
+    (effects
+      (font (size 1.6 1.6))
+      (justify left bottom))
+    (uuid "6a511b82-579b-57ac-a95f-9577e29d63e7"))
+  (sheet
+    (at 20 40)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "4de2bfe7-2d5f-5f9c-b59c-4eea5553314f")
+    (property "Sheetname" "power"
+      (at 20 39.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "power.kicad_sch"
+      (at 20 70.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "2")))))
+  (text "Питание: нижний разъём, фильтры, LDO, опора 2.5 В"
+    (at 22 56 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "efe8f09c-0294-5180-a571-40825b2282e8"))
+  (sheet
+    (at 115 40)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "d1799b20-0e2a-5f41-8968-af0256211297")
+    (property "Sheetname" "fpga"
+      (at 115 39.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "fpga.kicad_sch"
+      (at 115 70.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "3")))))
+  (text "Tang Nano 20K, SPI-флеш прошивки, согласующие резисторы"
+    (at 117 56 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "52473bef-8947-5d9a-bf75-9ca97c2efbbc"))
+  (sheet
+    (at 210 40)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "e47cfc37-204b-5bc9-ae67-d26c8d677327")
+    (property "Sheetname" "midi_sync"
+      (at 210 39.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "midi_sync.kicad_sch"
+      (at 210 70.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "4")))))
+  (text "MIDI-вход (TRS) и вход СИНХР"
+    (at 212 56 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "04c2a561-e077-5f8d-a1c2-22362369fda8"))
+  (sheet
+    (at 305 40)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "762d9a96-411e-57a6-9d28-7e1264b2b66e")
+    (property "Sheetname" "ain1"
+      (at 305 39.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "ain1.kicad_sch"
+      (at 305 70.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "5")))))
+  (text "Входной каскад ВХ1"
+    (at 307 56 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "f39d0b0c-b9b3-504a-b0b7-4944b138e872"))
+  (sheet
+    (at 20 85)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "87c77c8a-ce4a-5677-93f8-2a882592e335")
+    (property "Sheetname" "ain2"
+      (at 20 84.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "ain2.kicad_sch"
+      (at 20 115.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "6")))))
+  (text "Входной каскад ВХ2"
+    (at 22 101 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "4e2aa306-5f00-57ac-8eb3-2853ec20b11c"))
+  (sheet
+    (at 115 85)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "58fd7c11-8062-5e70-8503-5c2a754d5b10")
+    (property "Sheetname" "adc"
+      (at 115 84.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "adc.kicad_sch"
+      (at 115 115.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "7")))))
+  (text "АЦП входов: 2 × AD7091R"
+    (at 117 101 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "a46a2dc6-a8af-5629-bd2a-04a2f178aa22"))
+  (sheet
+    (at 210 85)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "600dd6cb-4e27-528c-83c1-c4ae05b1aa94")
+    (property "Sheetname" "dac"
+      (at 210 84.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "dac.kicad_sch"
+      (at 210 115.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "8")))))
+  (text "ЦАП PCM5102A"
+    (at 212 101 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "04d7ea8f-80e3-587d-a16f-feda37fbb14c"))
+  (sheet
+    (at 305 85)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "141483ce-90b3-53da-bbc4-81f6c077dc47")
+    (property "Sheetname" "aout"
+      (at 305 84.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "aout.kicad_sch"
+      (at 305 115.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "9")))))
+  (text "Выходы ВЫХ, ВЫХ2 и индикаторы перегрузки"
+    (at 307 101 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "c455067c-11a0-5880-afbc-eedc346e7a5e"))
+  (sheet
+    (at 20 130)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "bcb1ef56-357f-56d1-ad58-ba5235893995")
+    (property "Sheetname" "hp"
+      (at 20 129.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "hp.kicad_sch"
+      (at 20 160.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "10")))))
+  (text "Выход на наушники / линейный (TPA6132A2)"
+    (at 22 146 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "cc5976a2-f6df-587b-9044-04d9d9a766d0"))
+  (sheet
+    (at 115 130)
+    (size 80 30)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "b117eed6-bc82-51e6-b1dc-41baa3c8c589")
+    (property "Sheetname" "panel"
+      (at 115 129.3 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "panel.kicad_sch"
+      (at 115 160.6 0)
+      (effects
+        (font (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "avk_synth"
+        (path "/32f38c40-2b50-5c71-84ba-2b066e9f8d2d" (page "11")))))
+  (text "Панель: потенциометры, MCP3208, энкодеры, дисплей, штыри"
+    (at 117 146 0)
+    (effects
+      (font (size 1.5 1.5))
+      (justify left bottom))
+    (uuid "ababa4de-f9e2-52d4-8ec8-3c67d4b4ec68"))
+  (sheet_instances (path "/" (page "1"))))

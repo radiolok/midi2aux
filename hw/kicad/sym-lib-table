@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "avk_synth")(type "KiCad")(uri "${KIPRJMOD}/avk_synth.kicad_sym")(options "")(descr "АВК-6: AD7091R, Tang Nano 20K"))
+)
