@@ -1,0 +1,7 @@
+`verilator_config
+// Third-party sources are used unmodified: do not lint them with -Wall.
+lint_off -file "*/third_party/*"
+// picorv32.v carries a `timescale, our sources do not.
+lint_off -rule TIMESCALEMOD
+// Board tops: one `top` module per core variant (top_mono.sv, top_synth.sv).
+lint_off -rule DECLFILENAME -file "*/boards/*/top_*.sv"

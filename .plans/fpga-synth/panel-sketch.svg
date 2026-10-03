@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 128 98" width="1024" height="784" font-family="DejaVu Sans, Arial, sans-serif">
+  <!-- Эскиз лицевой панели FPGA-синтезатора для АВК-6. Единицы: мм. Панель 120x90, начало координат — левый верхний угол.
+       Штыри ВХ1/ВХ2/ВЫХ/ВЫХ2 стоят на сетке перемычек АВК-6 (4 мм от края). -->
+  <defs>
+    <g id="pin"><circle r="2.2" fill="#b08d3c"/><circle r="0.6" fill="#000"/></g>
+    <g id="pot"><circle r="5.5" fill="#333"/><line x1="0" y1="0" x2="0" y2="-4.5" stroke="#fff" stroke-width="0.5"/></g>
+    <g id="enc"><circle r="6.3" fill="#555"/><circle r="1" fill="#ddd"/></g>
+  </defs>
+  <rect x="-4" y="-4" width="128" height="98" fill="#ffffff"/>
+  <rect x="0" y="0" width="120" height="90" rx="1.5" fill="#d7dbde" stroke="#555" stroke-width="0.3"/>
+  <!-- крепёжные стойки -->
+  <g fill="#fff" stroke="#555" stroke-width="0.25">
+    <circle cx="4" cy="4" r="1.6"/><circle cx="116" cy="4" r="1.6"/>
+    <circle cx="4" cy="86" r="1.6"/><circle cx="116" cy="86" r="1.6"/>
+  </g>
+
+  <g font-size="2.3" text-anchor="middle" fill="#222">
+    <!-- штыри сетки АВК -->
+    <use href="#pin" x="4" y="45"/>   <text x="4" y="50.5">ВХ1</text>
+    <use href="#pin" x="61" y="4"/>   <text x="64.5" y="4.8" text-anchor="start">ВХ2</text>
+    <use href="#pin" x="116" y="45"/> <text x="116" y="50.5">ВЫХ</text>
+    <use href="#pin" x="61" y="86"/>  <text x="64.5" y="86.8" text-anchor="start">ВЫХ2</text>
+
+    <!-- потенциометры (MCP3208) -->
+    <rect x="8" y="9" width="66" height="35" rx="1" fill="none" stroke="#8a9" stroke-width="0.25" stroke-dasharray="1 0.7"/>
+    <use href="#pot" x="15" y="16"/><text x="15" y="24.5">СРЕЗ</text>
+    <use href="#pot" x="32" y="16"/><text x="32" y="24.5">РЕЗОН.</text>
+    <use href="#pot" x="49" y="16"/><text x="49" y="24.5">ENV→Ф</text>
+    <use href="#pot" x="66" y="16"/><text x="66" y="24.5">FX MIX</text>
+    <use href="#pot" x="15" y="34"/><text x="15" y="42.5">A</text>
+    <use href="#pot" x="32" y="34"/><text x="32" y="42.5">D</text>
+    <use href="#pot" x="49" y="34"/><text x="49" y="42.5">S</text>
+    <use href="#pot" x="66" y="34"/><text x="66" y="42.5">R</text>
+
+    <!-- громкость (аналоговая) и LED перегрузки -->
+    <circle cx="94" cy="19" r="8.5" fill="#222"/><line x1="94" y1="19" x2="94" y2="11.5" stroke="#fff" stroke-width="0.6"/>
+    <text x="94" y="31">ГРОМКОСТЬ</text>
+    <g font-size="2">
+      <circle cx="110" cy="14" r="1.5" fill="#e33" stroke="#600" stroke-width="0.2"/><text x="110" y="18.3">+10</text>
+      <circle cx="110" cy="24" r="1.5" fill="#e33" stroke="#600" stroke-width="0.2"/><text x="110" y="28.3">−10</text>
+    </g>
+
+    <!-- MIDI TRS — слева, к входам -->
+    <circle cx="20" cy="50" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="20" cy="50" r="1.8" fill="#111"/>
+    <text x="26" y="51" text-anchor="start">MIDI</text>
+
+    <!-- линейный выход TRS — справа, к выходам -->
+    <circle cx="90" cy="48" r="4" fill="#999" stroke="#444" stroke-width="0.3"/><circle cx="90" cy="48" r="1.8" fill="#111"/>
+    <text x="90" y="55.5">НАУШН./ЛИН.</text>
+
+    <!-- дисплей 1.14" -->
+    <rect x="7" y="57" width="36" height="25" rx="1" fill="#444"/>
+    <rect x="11.5" y="61.5" width="27" height="16" fill="#0b1e2e"/>
+    <g font-size="2.0" text-anchor="start" fill="#7fe0ff" font-family="DejaVu Sans Mono, monospace">
+      <text x="12.5" y="65">FX2: DELAY  IN1</text>
+      <text x="12.5" y="68.5">ВРЕМЯ   320мс</text>
+      <text x="12.5" y="72">ОБР.СВ.  45%</text>
+      <text x="12.5" y="75.5">СИНХР   ВКЛ</text>
+    </g>
+    <text x="25" y="85.5" font-size="2">1.14" 240×135</text>
+
+    <!-- энкодеры -->
+    <use href="#enc" x="52" y="68"/><text x="52" y="78">МЕНЮ</text>
+    <use href="#enc" x="70" y="68"/><text x="70" y="78">ПАР.1</text>
+    <use href="#enc" x="88" y="68"/><text x="88" y="78">ПАР.2</text>
+    <use href="#enc" x="106" y="68"/><text x="106" y="78">ПАР.3</text>
+  </g>
+
+  <!-- размеры до штырей сетки -->
+  <g font-size="1.8" fill="#c33" stroke="none" text-anchor="middle">
+    <line x1="0" y1="1.2" x2="61" y2="1.2" stroke="#c33" stroke-width="0.15"/><text x="30" y="0.8">61</text>
+    <line x1="0" y1="88.8" x2="61" y2="88.8" stroke="#c33" stroke-width="0.15"/><text x="30" y="91.5">61</text>
+  </g>
+  <g font-size="2.2" fill="#666" text-anchor="middle">
+    <text x="60" y="-1.5">120 мм</text>
+    <text x="-1.5" y="30" transform="rotate(-90 -1.5 30)">90 мм</text>
+  </g>
+</svg>
