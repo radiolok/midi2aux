@@ -57,6 +57,8 @@ luts:
 
 readme-img:
 	$(PYTHON) fpga/model/readme_figs.py
+	cp .plans/fpga-synth/panel-sketch.png img/readme/panel.png
+	cp .plans/fpga-synth/block-diagram.png img/readme/block-diagram.png
 
 plots: sim refs
 	cp $(BUILD)/sim/stub_core/stub_core.png $(BUILD)/sim/mono_core/mono_core.png \
