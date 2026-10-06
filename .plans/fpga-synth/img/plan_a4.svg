@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 700" width="1500" height="700" font-family="DejaVu Sans, Arial, sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+<rect width="1500" height="700" fill="#fff"/>
+<text x="20" y="30" font-size="17" font-weight="bold" fill="#222">А4. Аналоговые каскады на макетке: входы, АЦП, СИНХР, выходы, индикаторы</text>
+<rect x="20" y="70" width="230" height="90" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="135.0" y="103.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Лаб. источник</text>
+<text x="135.0" y="119.5" font-size="11.5" text-anchor="middle" fill="#333">±15 В (огранич. 50 мА) → ОУ, LM339</text>
+<text x="135.0" y="135.5" font-size="11.5" text-anchor="middle" fill="#333">+5 В → LP5907 → 3V3A, REF</text>
+<rect x="20" y="200" width="230" height="100" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="135.0" y="238.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Генератор / прецизионный</text>
+<text x="135.0" y="254.5" font-size="11.5" text-anchor="middle" fill="#333">источник ±10 В</text>
+<text x="135.0" y="270.5" font-size="11.5" text-anchor="middle" fill="#333">синус 1 кГц, меандр</text>
+<rect x="20" y="340" width="230" height="70" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="135.0" y="371.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">ТТЛ / ±10 В меандр</text>
+<text x="135.0" y="387.5" font-size="11.5" text-anchor="middle" fill="#333">0.1 Гц … 1.1 кГц</text>
+<rect x="300" y="190" width="300" height="130" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="450.0" y="235.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Входной каскад ×2</text>
+<text x="450.0" y="251.5" font-size="11.5" text-anchor="middle" fill="#333">сумматор-сдвиг 0.1·Vin + 1.25 В</text>
+<text x="450.0" y="267.5" font-size="11.5" text-anchor="middle" fill="#333">D401 BAT54S</text>
+<text x="450.0" y="283.5" font-size="11.5" text-anchor="middle" fill="#333">Саллен–Ки 20 кГц, OPA2350</text>
+<rect x="300" y="70" width="300" height="80" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="450.0" y="106.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">REF3025 → REF2V5</text>
+<text x="450.0" y="122.5" font-size="11.5" text-anchor="middle" fill="#333">опора смещения и АЦП</text>
+<rect x="650" y="190" width="230" height="130" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="765.0" y="235.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">2 × AD7091R</text>
+<text x="765.0" y="251.5" font-size="11.5" text-anchor="middle" fill="#333">общие CONVST, CS, SCLK</text>
+<text x="765.0" y="267.5" font-size="11.5" text-anchor="middle" fill="#333">раздельные SDO</text>
+<text x="765.0" y="283.5" font-size="11.5" text-anchor="middle" fill="#333">REFIN ← REF2V5 (HO-09)</text>
+<rect x="300" y="340" width="300" height="70" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="450.0" y="371.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">СИНХР</text>
+<text x="450.0" y="387.5" font-size="11.5" text-anchor="middle" fill="#333">22k, BAT54S, 470k, 74LVC1G17</text>
+<rect x="930" y="190" width="220" height="220" rx="7" fill="#ece0f8" stroke="#6a3fa0" stroke-width="1.6"/>
+<text x="1040.0" y="288.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Tang Nano 20K</text>
+<text x="1040.0" y="304.5" font-size="11.5" text-anchor="middle" fill="#333">synth_core</text>
+<text x="1040.0" y="320.5" font-size="11.5" text-anchor="middle" fill="#333">avk, cal, dc, stat</text>
+<rect x="930" y="470" width="220" height="70" rx="7" fill="#d9f2d9" stroke="#2e7d32" stroke-width="1.6"/>
+<text x="1040.0" y="501.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">PCM5102A</text>
+<text x="1040.0" y="517.5" font-size="11.5" text-anchor="middle" fill="#333">выход DC (HO-03)</text>
+<rect x="500" y="450" width="330" height="140" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="665.0" y="500.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Выходные каскады (±15 В)</text>
+<text x="665.0" y="516.5" font-size="11.5" text-anchor="middle" fill="#333">ГРОМКОСТЬ 10к → OPA2171 ×4.24 → ВЫХ</text>
+<text x="665.0" y="532.5" font-size="11.5" text-anchor="middle" fill="#333">DAC_R → OPA2171 ×4.24 → ВЫХ2</text>
+<text x="665.0" y="548.5" font-size="11.5" text-anchor="middle" fill="#333">R704/R708 100 Ом в петле ОС</text>
+<rect x="120" y="450" width="300" height="100" rx="7" fill="#fde2c8" stroke="#b5651d" stroke-width="1.6"/>
+<text x="270.0" y="488.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Индикаторы ±10 В</text>
+<text x="270.0" y="504.5" font-size="11.5" text-anchor="middle" fill="#333">LM339 от ±15 В</text>
+<text x="270.0" y="520.5" font-size="11.5" text-anchor="middle" fill="#333">детектор + растяжка 66 мс</text>
+<rect x="1220" y="190" width="260" height="170" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="1350.0" y="247.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Осциллограф + мультиметр</text>
+<text x="1350.0" y="263.5" font-size="11.5" text-anchor="middle" fill="#333">DC: смещение, масштаб</text>
+<text x="1350.0" y="279.5" font-size="11.5" text-anchor="middle" fill="#333">шум, THD (БПФ)</text>
+<text x="1350.0" y="295.5" font-size="11.5" text-anchor="middle" fill="#333">разбег каналов</text>
+<text x="1350.0" y="311.5" font-size="11.5" text-anchor="middle" fill="#333">устойчивость</text>
+<rect x="1220" y="470" width="260" height="80" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="1350.0" y="506.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Нагрузка</text>
+<text x="1350.0" y="522.5" font-size="11.5" text-anchor="middle" fill="#333">2 кОм ‖ 1 нФ, КЗ на землю</text>
+<polyline points="250,250.0 300,255.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="275.0" y="247.5" font-size="11" text-anchor="middle" fill="#444">ВХ1, ВХ2</text>
+<polyline points="450.0,150 450.0,190" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="600,110.0 765,110 765.0,190" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="700" y="103" font-size="11" text-anchor="middle" fill="#444">REF2V5</text>
+<polyline points="600,255.0 650,255.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="625.0" y="250.0" font-size="11" text-anchor="middle" fill="#444">AIN1, AIN2</text>
+<polyline points="880,255.0 930,255" fill="none" stroke="#333" stroke-width="1.6" marker-start="url(#ah)" marker-end="url(#ah)"/>
+<text x="905.0" y="250.0" font-size="11" text-anchor="middle" fill="#444">SPI</text>
+<polyline points="250,375.0 300,375.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="275.0" y="370.0" font-size="11" text-anchor="middle" fill="#444">СИНХР</text>
+<polyline points="600,375.0 900,375 930,375" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="760" y="368" font-size="11" text-anchor="middle" fill="#444">sync_in</text>
+<polyline points="1040.0,410 1040.0,470" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="1065" y="450" font-size="11" text-anchor="middle" fill="#444">I2S</text>
+<polyline points="930,505.0 830,505" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="880" y="498" font-size="11" text-anchor="middle" fill="#444">DAC_L, DAC_R</text>
+<polyline points="500,520.0 420,520.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="460" y="513" font-size="11" text-anchor="middle" fill="#444">ВЫХ</text>
+<polyline points="830,560 1190,560 1190,510 1220,510.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="1000" y="553" font-size="11" text-anchor="middle" fill="#444">ВЫХ, ВЫХ2</text>
+<polyline points="1150,267.0 1220,258.0" fill="none" stroke="#333" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ah)"/>
+<text x="1185.0" y="257.5" font-size="11" text-anchor="middle" fill="#444">консоль</text>
+<rect x="436.1" y="325" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="455" y="338.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.1</text>
+<rect x="746.1" y="325" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="765" y="338.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.2</text>
+<rect x="256.1" y="260" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="275" y="273.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.3</text>
+<rect x="431.1" y="415" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="450" y="428.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.4</text>
+<rect x="871.1" y="470" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="890" y="483.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.5</text>
+<rect x="646.1" y="600" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="665" y="613.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.6</text>
+<rect x="251.1" y="560" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="270" y="573.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.7</text>
+<rect x="1331.1" y="565" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="1350" y="578.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А4.8</text>
+<text x="20" y="690" font-size="11.5" fill="#555">Обозначения:</text>
+<rect x="110" y="678" width="18" height="14" rx="3" fill="#ece0f8" stroke="#6a3fa0"/>
+<text x="134" y="689.5" font-size="11.5" fill="#333">ПЛИС / Tang Nano 20K</text>
+<rect x="284" y="678" width="18" height="14" rx="3" fill="#d9f2d9" stroke="#2e7d32"/>
+<text x="308" y="689.5" font-size="11.5" fill="#333">готовый модуль</text>
+<rect x="416" y="678" width="18" height="14" rx="3" fill="#fde2c8" stroke="#b5651d"/>
+<text x="440" y="689.5" font-size="11.5" fill="#333">макетка (своя схема)</text>
+<rect x="590" y="678" width="18" height="14" rx="3" fill="#fbe4ec" stroke="#a33a63"/>
+<text x="614" y="689.5" font-size="11.5" fill="#333">несущая плата блока</text>
+<rect x="757" y="678" width="18" height="14" rx="3" fill="#e3e8ef" stroke="#475569"/>
+<text x="781" y="689.5" font-size="11.5" fill="#333">прибор</text>
+<rect x="833" y="678" width="18" height="14" rx="3" fill="#d8e7fa" stroke="#1f5fa8"/>
+<text x="857" y="689.5" font-size="11.5" fill="#333">ПК</text>
+<rect x="881" y="678" width="18" height="14" rx="3" fill="#fff3b0" stroke="#9a7d00"/>
+<text x="905" y="689.5" font-size="11.5" fill="#333">АВК-6</text>
+<rect x="950" y="678" width="34" height="14" rx="7" fill="#c62828"/><text x="967" y="689" font-size="10" text-anchor="middle" fill="#fff" font-weight="bold">А2.1</text><text x="992" y="689.5" font-size="11.5" fill="#333">точка проверки (пункт таблицы)</text>
+</svg>

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 640" width="1500" height="640" font-family="DejaVu Sans, Arial, sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+<rect width="1500" height="640" fill="#fff"/>
+<text x="20" y="30" font-size="17" font-weight="bold" fill="#222">Б3. Первое включение несущей платы: порядок и контрольные точки</text>
+<rect x="20" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="130.0" y="130.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">1. Голая плата</text>
+<text x="130.0" y="146.5" font-size="11.5" text-anchor="middle" fill="#333">омметр: шины на землю</text>
+<text x="130.0" y="162.5" font-size="11.5" text-anchor="middle" fill="#333">+5, ±15, 3V3x, REF — не КЗ</text>
+<text x="130.0" y="178.5" font-size="11.5" text-anchor="middle" fill="#333">ориентация полярных</text>
+<rect x="111.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="130" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.1</text>
+<rect x="265" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="375.0" y="122.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">2. Питание</text>
+<text x="375.0" y="138.5" font-size="11.5" text-anchor="middle" fill="#333">лаб. источник через</text>
+<text x="375.0" y="154.5" font-size="11.5" text-anchor="middle" fill="#333">кабель нижнего разъёма</text>
+<text x="375.0" y="170.5" font-size="11.5" text-anchor="middle" fill="#333">ток ≤ 50 мА на шину</text>
+<text x="375.0" y="186.5" font-size="11.5" text-anchor="middle" fill="#333">TP101…TP107</text>
+<polyline points="240,150.0 265,150.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="356.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="375" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.2</text>
+<rect x="510" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="620.0" y="122.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">3. Аналог без ПЛИС</text>
+<text x="620.0" y="138.5" font-size="11.5" text-anchor="middle" fill="#333">REF2V5, 3V3A — шум</text>
+<text x="620.0" y="154.5" font-size="11.5" text-anchor="middle" fill="#333">ВЫХ/ВЫХ2 ≈ 0 В</text>
+<text x="620.0" y="170.5" font-size="11.5" text-anchor="middle" fill="#333">входы: 0 В → AIN = 1.25 В</text>
+<text x="620.0" y="186.5" font-size="11.5" text-anchor="middle" fill="#333">индикаторы гаснут</text>
+<polyline points="485,150.0 510,150.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="601.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="620" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.3</text>
+<rect x="755" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="865.0" y="130.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">4. Tang Nano</text>
+<text x="865.0" y="146.5" font-size="11.5" text-anchor="middle" fill="#333">stub_core: синус</text>
+<text x="865.0" y="162.5" font-size="11.5" text-anchor="middle" fill="#333">консоль, флеш</text>
+<text x="865.0" y="178.5" font-size="11.5" text-anchor="middle" fill="#333">ток +5 В в норме</text>
+<polyline points="730,150.0 755,150.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="846.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="865" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.4</text>
+<rect x="1000" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="1110.0" y="130.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">5. Все узлы</text>
+<text x="1110.0" y="146.5" font-size="11.5" text-anchor="middle" fill="#333">повтор А2–А4</text>
+<text x="1110.0" y="162.5" font-size="11.5" text-anchor="middle" fill="#333">на плате</text>
+<text x="1110.0" y="178.5" font-size="11.5" text-anchor="middle" fill="#333">cal, cal save</text>
+<polyline points="975,150.0 1000,150.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="1091.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="1110" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.5</text>
+<rect x="1245" y="80" width="220" height="140" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="1355.0" y="130.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">6. Панель</text>
+<text x="1355.0" y="146.5" font-size="11.5" text-anchor="middle" fill="#333">дисплей за окном</text>
+<text x="1355.0" y="162.5" font-size="11.5" text-anchor="middle" fill="#333">ручки, энкодеры</text>
+<text x="1355.0" y="178.5" font-size="11.5" text-anchor="middle" fill="#333">гнёзда, светодиоды</text>
+<polyline points="1220,150.0 1245,150.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="1336.1" y="230" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="1355" y="243.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">Б3.6</text>
+<rect x="20" y="280" width="1460" height="300" rx="10" fill="none" stroke="#a33a63" stroke-width="1.4" stroke-dasharray="7 5"/>
+<text x="30" y="297" font-size="12.5" text-anchor="start" fill="#a33a63" font-weight="bold">Плата и где мерить</text>
+<rect x="40" y="320" width="280" height="230" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="180.0" y="391.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Лист power</text>
+<text x="180.0" y="407.5" font-size="11.5" text-anchor="middle" fill="#333">J101 нижний разъём</text>
+<text x="180.0" y="423.5" font-size="11.5" text-anchor="middle" fill="#333">FB101–103, C101–C106</text>
+<text x="180.0" y="439.5" font-size="11.5" text-anchor="middle" fill="#333">D102 → 5V_TN</text>
+<text x="180.0" y="455.5" font-size="11.5" text-anchor="middle" fill="#333">U101 3V3A  U102 3V3D</text>
+<text x="180.0" y="471.5" font-size="11.5" text-anchor="middle" fill="#333">U103 3V3H  U104 REF2V5</text>
+<text x="180.0" y="487.5" font-size="11.5" text-anchor="middle" fill="#333">TP101…TP109</text>
+<rect x="360" y="320" width="260" height="230" rx="7" fill="#ece0f8" stroke="#6a3fa0" stroke-width="1.6"/>
+<text x="490.0" y="399.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Tang Nano + флеш</text>
+<text x="490.0" y="415.5" font-size="11.5" text-anchor="middle" fill="#333">гнёзда J201/J202</text>
+<text x="490.0" y="431.5" font-size="11.5" text-anchor="middle" fill="#333">U201 W25Q64</text>
+<text x="490.0" y="447.5" font-size="11.5" text-anchor="middle" fill="#333">TP201…TP207: I2S,</text>
+<text x="490.0" y="463.5" font-size="11.5" text-anchor="middle" fill="#333">adc_sclk, sdo1,</text>
+<text x="490.0" y="479.5" font-size="11.5" text-anchor="middle" fill="#333">midi_rx, sync_in</text>
+<rect x="660" y="320" width="280" height="230" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="800.0" y="415.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">analog_in</text>
+<text x="800.0" y="431.5" font-size="11.5" text-anchor="middle" fill="#333">входные каскады</text>
+<text x="800.0" y="447.5" font-size="11.5" text-anchor="middle" fill="#333">AD7091R ×2</text>
+<text x="800.0" y="463.5" font-size="11.5" text-anchor="middle" fill="#333">TP401, TP451: AIN1/2</text>
+<rect x="980" y="320" width="260" height="230" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="1110.0" y="407.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">audio_out + phones</text>
+<text x="1110.0" y="423.5" font-size="11.5" text-anchor="middle" fill="#333">PCM5102A: TP601/602</text>
+<text x="1110.0" y="439.5" font-size="11.5" text-anchor="middle" fill="#333">OPA2171: TP701/702</text>
+<text x="1110.0" y="455.5" font-size="11.5" text-anchor="middle" fill="#333">LM339, LED701/702</text>
+<text x="1110.0" y="471.5" font-size="11.5" text-anchor="middle" fill="#333">TPA6132A2: TP801</text>
+<rect x="1270" y="320" width="190" height="230" rx="7" fill="#fbe4ec" stroke="#a33a63" stroke-width="1.6"/>
+<text x="1365.0" y="407.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">panel</text>
+<text x="1365.0" y="423.5" font-size="11.5" text-anchor="middle" fill="#333">MCP3208</text>
+<text x="1365.0" y="439.5" font-size="11.5" text-anchor="middle" fill="#333">EC11 ×4</text>
+<text x="1365.0" y="455.5" font-size="11.5" text-anchor="middle" fill="#333">J901 дисплей</text>
+<text x="1365.0" y="471.5" font-size="11.5" text-anchor="middle" fill="#333">J911…J914 штыри</text>
+<text x="20" y="630" font-size="11.5" fill="#555">Обозначения:</text>
+<rect x="110" y="618" width="18" height="14" rx="3" fill="#ece0f8" stroke="#6a3fa0"/>
+<text x="134" y="629.5" font-size="11.5" fill="#333">ПЛИС / Tang Nano 20K</text>
+<rect x="284" y="618" width="18" height="14" rx="3" fill="#d9f2d9" stroke="#2e7d32"/>
+<text x="308" y="629.5" font-size="11.5" fill="#333">готовый модуль</text>
+<rect x="416" y="618" width="18" height="14" rx="3" fill="#fde2c8" stroke="#b5651d"/>
+<text x="440" y="629.5" font-size="11.5" fill="#333">макетка (своя схема)</text>
+<rect x="590" y="618" width="18" height="14" rx="3" fill="#fbe4ec" stroke="#a33a63"/>
+<text x="614" y="629.5" font-size="11.5" fill="#333">несущая плата блока</text>
+<rect x="757" y="618" width="18" height="14" rx="3" fill="#e3e8ef" stroke="#475569"/>
+<text x="781" y="629.5" font-size="11.5" fill="#333">прибор</text>
+<rect x="833" y="618" width="18" height="14" rx="3" fill="#d8e7fa" stroke="#1f5fa8"/>
+<text x="857" y="629.5" font-size="11.5" fill="#333">ПК</text>
+<rect x="881" y="618" width="18" height="14" rx="3" fill="#fff3b0" stroke="#9a7d00"/>
+<text x="905" y="629.5" font-size="11.5" fill="#333">АВК-6</text>
+<rect x="950" y="618" width="34" height="14" rx="7" fill="#c62828"/><text x="967" y="629" font-size="10" text-anchor="middle" fill="#fff" font-weight="bold">А2.1</text><text x="992" y="629.5" font-size="11.5" fill="#333">точка проверки (пункт таблицы)</text>
+</svg>

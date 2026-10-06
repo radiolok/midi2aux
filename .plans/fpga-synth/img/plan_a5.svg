@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 600" width="1400" height="600" font-family="DejaVu Sans, Arial, sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+<rect width="1400" height="600" fill="#fff"/>
+<text x="20" y="30" font-size="17" font-weight="bold" fill="#222">А5. Стенд целиком: сравнение с симуляцией и первая работа с АВК-6 проводами</text>
+<rect x="20" y="80" width="260" height="150" rx="7" fill="#d8e7fa" stroke="#1f5fa8" stroke-width="1.6"/>
+<text x="150.0" y="127.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">ПК: hil.py</text>
+<text x="150.0" y="143.5" font-size="11.5" text-anchor="middle" fill="#333">стимулы MIDI из fpga/sim/system</text>
+<text x="150.0" y="159.5" font-size="11.5" text-anchor="middle" fill="#333">запись ВЫХ/ВЫХ2</text>
+<text x="150.0" y="175.5" font-size="11.5" text-anchor="middle" fill="#333">те же анализаторы и допуски</text>
+<text x="150.0" y="191.5" font-size="11.5" text-anchor="middle" fill="#333">отчёт: железо vs симуляция</text>
+<rect x="20" y="270" width="260" height="70" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="150.0" y="309.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">USB-MIDI</text>
+<rect x="20" y="380" width="260" height="80" rx="7" fill="#e3e8ef" stroke="#475569" stroke-width="1.6"/>
+<text x="150.0" y="416.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Звуковая карта (DC)</text>
+<text x="150.0" y="432.5" font-size="11.5" text-anchor="middle" fill="#333">2 канала, 48/96 кГц</text>
+<rect x="380" y="120" width="360" height="300" rx="7" fill="#ece0f8" stroke="#6a3fa0" stroke-width="1.6"/>
+<text x="560.0" y="226.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">Стенд А2–А4</text>
+<text x="560.0" y="242.5" font-size="11.5" text-anchor="middle" fill="#333">Tang Nano 20K + модули + макетки</text>
+<text x="560.0" y="258.5" font-size="11.5" text-anchor="middle" fill="#333"></text>
+<text x="560.0" y="274.5" font-size="11.5" text-anchor="middle" fill="#333">ВХ1, ВХ2, СИНХР ← АВК</text>
+<text x="560.0" y="290.5" font-size="11.5" text-anchor="middle" fill="#333">ВЫХ, ВЫХ2 → АВК / звуковая карта</text>
+<text x="560.0" y="306.5" font-size="11.5" text-anchor="middle" fill="#333">MIDI ← USB-MIDI / клавиатура</text>
+<text x="560.0" y="322.5" font-size="11.5" text-anchor="middle" fill="#333">консоль: stat (переполнения)</text>
+<rect x="960" y="80" width="420" height="360" rx="7" fill="#fff3b0" stroke="#9a7d00" stroke-width="1.6"/>
+<text x="1170.0" y="208.5" font-size="13.5" text-anchor="middle" fill="#222" font-weight="bold">АВК-6</text>
+<text x="1170.0" y="224.5" font-size="11.5" text-anchor="middle" fill="#333">генератор: синус, меандр 0.1…1100 Гц</text>
+<text x="1170.0" y="240.5" font-size="11.5" text-anchor="middle" fill="#333">выход меандра (СИНХР) — с разъёма</text>
+<text x="1170.0" y="256.5" font-size="11.5" text-anchor="middle" fill="#333">интегратор, умножитель, сумматоры</text>
+<text x="1170.0" y="272.5" font-size="11.5" text-anchor="middle" fill="#333">индикатор XY</text>
+<text x="1170.0" y="288.5" font-size="11.5" text-anchor="middle" fill="#333"></text>
+<text x="1170.0" y="304.5" font-size="11.5" text-anchor="middle" fill="#333">соединение проводами со штырями стенда,</text>
+<text x="1170.0" y="320.5" font-size="11.5" text-anchor="middle" fill="#333">общая земля — одна точка</text>
+<polyline points="150.0,230 150.0,270" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="280,305.0 330,305 330,360 380,360" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="305.0" y="300.0" font-size="11" text-anchor="middle" fill="#444">MIDI</text>
+<polyline points="380,400 310,400 310,420 280,420.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="340" y="392" font-size="11" text-anchor="middle" fill="#444">ВЫХ, ВЫХ2</text>
+<polyline points="280,155.0 380,155" fill="none" stroke="#333" stroke-width="1.6" marker-start="url(#ah)" marker-end="url(#ah)"/>
+<text x="330.0" y="150.0" font-size="11" text-anchor="middle" fill="#444">USB: консоль</text>
+<polyline points="960,152.0 740,152" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="850.0" y="147.0" font-size="11" text-anchor="middle" fill="#444">генератор → ВХ1</text>
+<polyline points="960,206.0 740,206" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="850.0" y="201.0" font-size="11" text-anchor="middle" fill="#444">меандр → СИНХР</text>
+<polyline points="740,290 960,288.79999999999995" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="850.0" y="284.4" font-size="11" text-anchor="middle" fill="#444">ВЫХ2: ENV / LFO / 1 В/окт</text>
+<polyline points="740,350 960,350.0" fill="none" stroke="#333" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="850.0" y="345.0" font-size="11" text-anchor="middle" fill="#444">ВЫХ → сумматор, XY</text>
+<rect x="311.1" y="240" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="330" y="253.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А5.1</text>
+<rect x="541.1" y="440" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="560" y="453.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А5.2</text>
+<rect x="831.1" y="110" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="850" y="123.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А5.3</text>
+<rect x="831.1" y="370" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="850" y="383.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А5.4</text>
+<rect x="1151.1" y="460" width="37.8" height="18" rx="9" fill="#c62828"/>
+<text x="1170" y="473.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="bold">А5.5</text>
+<text x="20" y="590" font-size="11.5" fill="#555">Обозначения:</text>
+<rect x="110" y="578" width="18" height="14" rx="3" fill="#ece0f8" stroke="#6a3fa0"/>
+<text x="134" y="589.5" font-size="11.5" fill="#333">ПЛИС / Tang Nano 20K</text>
+<rect x="284" y="578" width="18" height="14" rx="3" fill="#d9f2d9" stroke="#2e7d32"/>
+<text x="308" y="589.5" font-size="11.5" fill="#333">готовый модуль</text>
+<rect x="416" y="578" width="18" height="14" rx="3" fill="#fde2c8" stroke="#b5651d"/>
+<text x="440" y="589.5" font-size="11.5" fill="#333">макетка (своя схема)</text>
+<rect x="590" y="578" width="18" height="14" rx="3" fill="#fbe4ec" stroke="#a33a63"/>
+<text x="614" y="589.5" font-size="11.5" fill="#333">несущая плата блока</text>
+<rect x="757" y="578" width="18" height="14" rx="3" fill="#e3e8ef" stroke="#475569"/>
+<text x="781" y="589.5" font-size="11.5" fill="#333">прибор</text>
+<rect x="833" y="578" width="18" height="14" rx="3" fill="#d8e7fa" stroke="#1f5fa8"/>
+<text x="857" y="589.5" font-size="11.5" fill="#333">ПК</text>
+<rect x="881" y="578" width="18" height="14" rx="3" fill="#fff3b0" stroke="#9a7d00"/>
+<text x="905" y="589.5" font-size="11.5" fill="#333">АВК-6</text>
+<rect x="950" y="578" width="34" height="14" rx="7" fill="#c62828"/><text x="967" y="589" font-size="10" text-anchor="middle" fill="#fff" font-weight="bold">А2.1</text><text x="992" y="589.5" font-size="11.5" fill="#333">точка проверки (пункт таблицы)</text>
+</svg>

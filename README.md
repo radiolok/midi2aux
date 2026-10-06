@@ -373,7 +373,8 @@ USB-UART Tang Nano (115200 бод): `help`, `list`, `get`/`set <параметр
 
 Дальше: [`fpga/README.md`](fpga/README.md) — RTL, платы, тестбенч; [`fpga/sim/README.md`](fpga/sim/README.md)
 — что и как проверяется, с графиками по этапам; [`sw/README.md`](sw/README.md) — прошивка;
-[`.plans/fpga-synth/plan.md`](.plans/fpga-synth/plan.md) — план и статус этапов.
+[`.plans/fpga-synth/plan.md`](.plans/fpga-synth/plan.md) — план работ на железе (стенд на отладочных платах,
+готовый блок), журнал сделанного в симуляции — [`done-sim.md`](.plans/fpga-synth/done-sim.md).
 
 ## Что ещё нужно проверить на железе
 
@@ -382,4 +383,5 @@ USB-UART Tang Nano (115200 бод): `help`, `list`, `get`/`set <параметр
 - ресурсы и тайминг 32 голосов и 6 слотов в Gowin EDA;
 - калибровка входов по реальному входному каскаду (`cal`);
 - инициализация конкретного модуля ST7789, направление энкодеров, совместимость SD-карт;
+- порядок и критерии всех проверок — части А (стенд) и Б (блок) [плана](.plans/fpga-synth/plan.md);
 - PSRAM на 9K не используется (нужен IP Gowin) — на 9K одна задержка до 85 мс, без хоруса и реверберации.
