@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="990" height="520" viewBox="0 0 990 520" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444c56"/></marker></defs>
+<rect width="990" height="520" fill="#ffffff"/>
+<text x="20" y="34" font-size="16" font-weight="600" fill="#1f2328">MIDI2AUX — mono mode (default build)</text>
+<rect x="20" y="60" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="95.0" y="89.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">MIDI IN</text>
+<text x="95.0" y="103.0" text-anchor="middle" font-size="11" fill="#57606a">DIN-5, 31 250 baud</text>
+<rect x="220" y="60" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="295.0" y="89.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">Optocoupler</text>
+<text x="295.0" y="103.0" text-anchor="middle" font-size="11" fill="#57606a">RX gate: PD2</text>
+<rect x="20" y="180" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="95.0" y="209.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">Potentiometer</text>
+<text x="95.0" y="223.0" text-anchor="middle" font-size="11" fill="#57606a">PC0 / ADC0</text>
+<rect x="220" y="180" width="150" height="64" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="295.0" y="202.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">ADC_vect ISR</text>
+<text x="295.0" y="216.0" text-anchor="middle" font-size="11" fill="#57606a">free-running, 104 µs</text>
+<text x="295.0" y="230.0" text-anchor="middle" font-size="11" fill="#57606a">ADCH → potValue</text>
+<rect x="20" y="300" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="95.0" y="329.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">Button</text>
+<text x="95.0" y="343.0" text-anchor="middle" font-size="11" fill="#57606a">PC1, pull-up</text>
+<rect x="220" y="300" width="150" height="64" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="295.0" y="322.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">TIMER1_COMPA ISR</text>
+<text x="295.0" y="336.0" text-anchor="middle" font-size="11" fill="#57606a">10 ms tick, debounce</text>
+<text x="295.0" y="350.0" text-anchor="middle" font-size="11" fill="#57606a">waveMode++, noteOff()</text>
+<rect x="220" y="420" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="295.0" y="442.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">LEDs</text>
+<text x="295.0" y="456.0" text-anchor="middle" font-size="11" fill="#57606a">PD4–PD6: waveform</text>
+<text x="295.0" y="470.0" text-anchor="middle" font-size="11" fill="#57606a">PD7: note playing</text>
+<rect x="820" y="300" width="150" height="64" rx="7" fill="#e3f2e6" stroke="#3d8b4f" stroke-width="1.5"/>
+<text x="895.0" y="322.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">Timer2 Fast PWM</text>
+<text x="895.0" y="336.0" text-anchor="middle" font-size="11" fill="#57606a">160 kHz, TOP = 99</text>
+<text x="895.0" y="350.0" text-anchor="middle" font-size="11" fill="#57606a">100 levels</text>
+<rect x="820" y="180" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="895.0" y="209.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">RC low-pass</text>
+<text x="895.0" y="223.0" text-anchor="middle" font-size="11" fill="#57606a">PWM → analog</text>
+<rect x="820" y="60" width="150" height="64" rx="7" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="895.0" y="96.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">AUX OUT</text>
+<path d="M170,92.0 L220,92.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<path d="M370,92.0 L420,92.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="395.0" y="85.0" text-anchor="middle" font-size="10.5" font-style="italic" fill="#444c56">PD0</text>
+<path d="M170,212.0 L220,212.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<path d="M170,332.0 L220,332.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<path d="M295.0,364 L295.0,420" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="301.0" y="396" text-anchor="start" font-size="10.5" font-style="italic" fill="#444c56">mode LEDs</text>
+<path d="M895.0,300 L895.0,244" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="901.0" y="276" text-anchor="start" font-size="10.5" font-style="italic" fill="#444c56">OC2B / PD3</text>
+<path d="M895.0,180 L895.0,124" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<path d="M770,332.0 L820,332.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="795.0" y="325.0" text-anchor="middle" font-size="10.5" font-style="italic" fill="#444c56">OCR2B</text>
+<rect x="420" y="438" width="16" height="14" rx="3" fill="#eef2f7" stroke="#5b6b7f" stroke-width="1.5"/>
+<text x="444" y="449" font-size="11.5" fill="#1f2328">hardware / pins</text>
+<rect x="610" y="438" width="16" height="14" rx="3" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="634" y="449" font-size="11.5" fill="#1f2328">interrupt handler</text>
+<rect x="420" y="464" width="16" height="14" rx="3" fill="#e3f2e6" stroke="#3d8b4f" stroke-width="1.5"/>
+<text x="444" y="475" font-size="11.5" fill="#1f2328">timer peripheral</text>
+<rect x="610" y="464" width="16" height="14" rx="3" fill="#ebe6f7" stroke="#6b55a8" stroke-width="1.5"/>
+<text x="634" y="475" font-size="11.5" fill="#1f2328">main loop / data</text>
+<rect x="420" y="60" width="150" height="64" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="495.0" y="89.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">USART_RX ISR</text>
+<text x="495.0" y="103.0" text-anchor="middle" font-size="11" fill="#57606a">UDR0 → midiParser()</text>
+<rect x="620" y="60" width="150" height="64" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="695.0" y="82.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">noteOn / noteOff</text>
+<text x="695.0" y="96.0" text-anchor="middle" font-size="11" fill="#57606a">last note wins</text>
+<text x="695.0" y="110.0" text-anchor="middle" font-size="11" fill="#57606a">period = table[note]</text>
+<rect x="620" y="180" width="150" height="64" rx="7" fill="#e3f2e6" stroke="#3d8b4f" stroke-width="1.5"/>
+<text x="695.0" y="202.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">Timer0 CTC</text>
+<text x="695.0" y="216.0" text-anchor="middle" font-size="11" fill="#57606a">IRQ rate = note × 64</text>
+<text x="695.0" y="230.0" text-anchor="middle" font-size="11" fill="#57606a">prescaler 8 / 64</text>
+<rect x="620" y="300" width="150" height="64" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="695.0" y="322.0" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1f2328">TIMER0_COMPA ISR</text>
+<text x="695.0" y="336.0" text-anchor="middle" font-size="11" fill="#57606a">phase 0…63 → sample</text>
+<text x="695.0" y="350.0" text-anchor="middle" font-size="11" fill="#57606a">square · triangle · sine</text>
+<path d="M570,92.0 L620,92.0" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<path d="M695.0,124 L695.0,180" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="701.0" y="156" text-anchor="start" font-size="10.5" font-style="italic" fill="#444c56">OCR0A, prescaler</text>
+<path d="M695.0,244 L695.0,300" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="701.0" y="276" text-anchor="start" font-size="10.5" font-style="italic" fill="#444c56">compare match</text>
+<path d="M370,212.0 L495.0,212.0 L495.0,318 L620,318" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="378" y="205.0" text-anchor="start" font-size="10.5" font-style="italic" fill="#444c56">potValue</text>
+<path d="M370,346 L620,346" fill="none" stroke="#444c56" stroke-width="1.4" marker-end="url(#a)"/>
+<text x="495.0" y="340" text-anchor="middle" font-size="10.5" font-style="italic" fill="#444c56">waveMode</text>
+</svg>
