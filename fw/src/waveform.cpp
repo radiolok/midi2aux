@@ -4,6 +4,9 @@
 
 volatile uint8_t potValue = 0;
 volatile uint8_t waveMode = 0;
+
+#ifndef POLY_VOICES
+
 static volatile uint8_t phase = 0;
 static uint8_t sine[16];
 
@@ -66,3 +69,5 @@ ISR(TIMER0_COMPA_vect) {
 	if (phase >= 64)
 		phase = 0;
 }
+
+#endif

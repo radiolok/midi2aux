@@ -1,11 +1,14 @@
 #include "midi.h"
 #include "waveform.h"
+#include "poly.h"
 
+#ifndef POLY_VOICES
 static const uint32_t notes[12] = {
 	1956947, 1847042, 1743489, 1646090,
 	1553247, 1466074, 1384083, 1306122,
 	1233141, 1163636, 1098524, 1036672
 };
+#endif
 
 enum MidiState { MIDI_WAIT_STATUS, MIDI_WAIT_DATA1, MIDI_WAIT_DATA2 };
 
@@ -15,6 +18,7 @@ static uint8_t midiData1 = 0;
 static uint8_t midiNote = 0;
 volatile uint8_t midiActive = 0;
 
+#ifndef POLY_VOICES
 uint16_t getNotePeriod(uint8_t note) {
 	uint8_t octave = note / 12;
 	uint8_t semi   = note % 12;
@@ -57,6 +61,7 @@ void noteOff(void) {
 	PORTD &= ~(1 << 7);
 	midiActive = 0;
 }
+#endif
 
 void midiParser(uint8_t byte) {
 	if (byte & 0x80) {
@@ -80,8 +85,12 @@ void midiParser(uint8_t byte) {
 				noteOn(midiNote);
 			} else if ((midiStatus & 0xF0) == 0x80
 			           || ((midiStatus & 0xF0) == 0x90 && byte == 0)) {
+#ifdef POLY_VOICES
+				noteRelease(midiData1);
+#else
 				if (midiData1 == midiNote)
 					noteOff();
+#endif
 			}
 			midiState = MIDI_WAIT_DATA1;
 			break;

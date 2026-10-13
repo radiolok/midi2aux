@@ -1,0 +1,206 @@
+#ifdef POLY_VOICES
+
+#include "poly.h"
+#include "midi.h"
+#include "waveform.h"
+#include <avr/interrupt.h>
+#include <util/atomic.h>
+#include <math.h>
+
+#if POLY_ACC_BITS == 24
+typedef __uint24 acc_t;
+#else
+typedef uint16_t acc_t;
+#endif
+
+#if POLY_VOICES < 1 || POLY_VOICES > 8
+#error "POLY_VOICES must be 1..8 (VOICE() is unrolled 8 times)"
+#endif
+
+#define N   POLY_VOICES
+#define AMP (POLY_PWM_TOP / N)	// per-voice amplitude, sum never exceeds TOP
+
+// phase increments for notes 120..131 at 2^32 scale, shifted down per octave
+#define INC(f) ((uint32_t)((f) * 4294967296.0 / POLY_FS + 0.5))
+static const uint32_t incTop[12] = {
+	INC(8372.018), INC(8869.844), INC(9397.273), INC(9956.063),
+	INC(10548.08), INC(11175.30), INC(11839.82), INC(12543.85),
+	INC(13289.75), INC(14080.00), INC(14917.24), INC(15804.27)
+};
+
+static acc_t acc[N];
+static acc_t inc[N];
+static uint8_t vnote[N];
+static uint16_t vstamp[N];
+static uint16_t stamp;
+static uint8_t outNext;
+// 256-byte aligned: the sample index becomes the low address byte directly
+static uint8_t wavetable[256] __attribute__((aligned(256)));
+static uint8_t sineTable[256];	// computed once: sinf() x256 takes ~30 ms
+
+static uint8_t tblMode = 0xFF;
+static uint8_t tblPot = 0xFF;
+
+// Runs in main loop with interrupts enabled; no divisions inside loops so a
+// pot sweep does not stall MIDI parsing (rx buffer holds ~5 ms of bytes).
+static void buildTable(uint8_t mode, uint8_t pot) {
+	switch (mode) {
+	case 0: {	// square, pot = duty
+		for (uint16_t i = 0; i < 256; i++)
+			wavetable[i] = (i < pot) ? AMP : 0;
+		break;
+	}
+	case 1: {	// triangle, pot = rise/fall split (pot <= 252)
+		uint8_t split = pot;
+		uint16_t v = 0;
+		uint16_t up = split ? ((uint16_t)AMP << 8) / split : 0;
+		uint16_t dn = ((uint16_t)AMP << 8) / (255 - split);
+		uint16_t i;
+		for (i = 0; i < split; i++) {
+			wavetable[i] = v >> 8;
+			v += up;
+		}
+		v = (uint16_t)AMP << 8;
+		for (; i < 256; i++) {
+			wavetable[i] = v >> 8;
+			v -= dn;
+		}
+		break;
+	}
+	case 2: {	// sine
+		for (uint16_t i = 0; i < 256; i++)
+			wavetable[i] = sineTable[i];
+		break;
+	}
+	}
+}
+
+void initWaveform(void) {
+	TCCR0A = (1 << WGM01);
+	OCR0A  = F_CPU / 8 / POLY_FS - 1;
+	TCCR0B = (1 << CS01);
+	TIMSK0 |= (1 << OCIE0A);
+
+	for (uint16_t i = 0; i < 256; i++)
+		sineTable[i] = (uint8_t)((sinf((float)i * (float)M_PI / 128.0f) + 1.0f)
+		                         * (AMP / 2.0f) + 0.5f);
+	for (uint8_t v = 0; v < N; v++)
+		vnote[v] = 0xFF;
+	polyPoll();
+}
+
+// Rebuild the wavetable when mode or pot changes; called from the main loop.
+void polyPoll(void) {
+	uint8_t mode = waveMode;
+	uint8_t pot = potValue & 0xFC;
+	if (mode == 2)
+		pot = 0;
+	if (mode == tblMode && pot == tblPot)
+		return;
+	tblMode = mode;
+	tblPot = pot;
+	buildTable(mode, pot);
+}
+
+// wavetable[idx] as ZL = idx, ZH = hi8(wavetable): 4 cycles
+static inline uint8_t lookup(uint8_t idx) {
+	uint8_t v;
+	asm ("mov r30, %1\n\t"
+	     "ldi r31, hi8(%2)\n\t"
+	     "ld %0, Z"
+	     : "=r" (v) : "r" (idx), "i" (wavetable) : "r30", "r31");
+	return v;
+}
+
+#define VOICE(i) \
+	if (N > i && inc[i]) { \
+		acc_t a = acc[i] + inc[i]; \
+		acc[i] = a; \
+		sum += lookup((uint8_t)(a >> (POLY_ACC_BITS - 8))); \
+	}
+
+ISR(TIMER0_COMPA_vect) {
+	OCR2B = outNext;	// output first: no jitter from voice count
+
+	uint8_t sum = 0;
+	VOICE(0) VOICE(1) VOICE(2) VOICE(3)
+	VOICE(4) VOICE(5) VOICE(6) VOICE(7)
+	outNext = sum;
+}
+
+static void updateLed(void) {
+	for (uint8_t v = 0; v < N; v++) {
+		if (vnote[v] != 0xFF) {
+			PORTD |= (1 << 7);
+			midiActive = 1;
+			return;
+		}
+	}
+	PORTD &= ~(1 << 7);
+	midiActive = 0;
+}
+
+// Runs in main loop (uart_poll). Voice state is shared with the sample ISR and
+// the button ISR (noteOff), so allocation + commit is atomic (~150 cycles).
+void noteOn(uint8_t note) {
+	uint32_t i32 = incTop[note % 12] >> (10 - note / 12);
+	if (i32 >= 0x80000000UL)	// above Nyquist
+		return;
+
+	acc_t newInc = (acc_t)(i32 >> (32 - POLY_ACC_BITS));
+
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		uint8_t v, pick = 0;
+		uint16_t oldest = 0;
+		for (v = 0; v < N; v++)
+			if (vnote[v] == note)
+				break;
+		if (v == N) {
+			for (v = 0; v < N; v++)
+				if (vnote[v] == 0xFF)
+					break;
+		}
+		if (v == N) {	// steal the oldest voice
+			for (uint8_t k = 0; k < N; k++) {
+				uint16_t age = stamp - vstamp[k];
+				if (age >= oldest) {
+					oldest = age;
+					pick = k;
+				}
+			}
+			v = pick;
+		}
+
+		vnote[v] = note;
+		vstamp[v] = ++stamp;
+		acc[v] = 0;
+		inc[v] = newInc;
+		updateLed();
+	}
+}
+
+void noteRelease(uint8_t note) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (uint8_t v = 0; v < N; v++) {
+			if (vnote[v] == note) {
+				vnote[v] = 0xFF;
+				inc[v] = 0;
+			}
+		}
+		updateLed();
+	}
+}
+
+void noteOff(void) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (uint8_t v = 0; v < N; v++) {
+			vnote[v] = 0xFF;
+			inc[v] = 0;
+		}
+		outNext = 0;
+		OCR2B = 0;
+		updateLed();
+	}
+}
+
+#endif

@@ -5,13 +5,20 @@
 #include "uart.h"
 #include "midi.h"
 #include "waveform.h"
+#include "poly.h"
+
+#ifdef POLY_VOICES
+#define PWM_TOP POLY_PWM_TOP
+#else
+#define PWM_TOP 99
+#endif
 
 #define MIDI_BAUD 31250
 
 static void initTimer2(void) {
 	TCCR2A = (1 << COM2B1) | (1 << WGM21) | (1 << WGM20);
 	TCCR2B = (1 << WGM22) | (1 << CS20);
-	OCR2A = 99;
+	OCR2A = PWM_TOP;
 	OCR2B = 0;
 	DDRD |= (1 << 3);
 }
@@ -93,8 +100,13 @@ int main(void) {
 	sei();
 	set_sleep_mode(SLEEP_MODE_IDLE);
 
-	for (;;)
+	for (;;) {
+#ifdef POLY_VOICES
+		uart_poll();
+		polyPoll();
+#endif
 		sleep_mode();
+	}
 
 	return 0;
 }
