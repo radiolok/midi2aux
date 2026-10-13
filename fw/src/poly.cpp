@@ -3,6 +3,7 @@
 #include "poly.h"
 #include "midi.h"
 #include "waveform.h"
+#include "envelope.h"
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 #include <math.h>
@@ -19,7 +20,12 @@ typedef uint16_t acc_t;
 
 // Sample ISR cost measured from the listing (tools/isrcycles.py), worst case
 // with all voices active: ~77 + 30*N cycles (24-bit acc), ~65 + 22*N (16-bit).
-#if POLY_ACC_BITS == 24
+// With SINE_ENV the sine path (envelope multiply) is the longest one.
+#if defined(SINE_ENV) && POLY_ACC_BITS == 24
+#define POLY_ISR_CYCLES (86 + 36 * POLY_VOICES)
+#elif defined(SINE_ENV)
+#define POLY_ISR_CYCLES (74 + 28 * POLY_VOICES)
+#elif POLY_ACC_BITS == 24
 #define POLY_ISR_CYCLES (77 + 30 * POLY_VOICES)
 #else
 #define POLY_ISR_CYCLES (65 + 22 * POLY_VOICES)
@@ -59,6 +65,17 @@ static uint8_t sineTable[256];	// computed once: sinf() x256 takes ~30 ms
 
 static uint8_t tblMode = 0xFF;
 static uint8_t tblPot = 0xFF;
+
+#ifdef SINE_ENV
+// Sine mode with envelope: the table holds signed samples (-HALF..HALF),
+// each voice is scaled by its envelope and the sum is centred on BIAS, so
+// silent voices sit at mid-scale and fades end without a DC step.
+#define HALF (AMP / 2)
+#define BIAS (POLY_PWM_TOP / 2)
+static Env venv[N];
+static uint8_t venvOut[N];
+static uint8_t envMode;		// 1 while the sine table is active
+#endif
 
 // Runs in main loop with interrupts enabled; no divisions inside loops so a
 // pot sweep does not stall MIDI parsing (rx buffer holds ~5 ms of bytes).
@@ -101,8 +118,12 @@ void initWaveform(void) {
 	TIMSK0 |= (1 << OCIE0A);
 
 	for (uint16_t i = 0; i < 256; i++)
+#ifdef SINE_ENV
+		sineTable[i] = (uint8_t)(int8_t)lroundf(sinf((float)i * (float)M_PI / 128.0f) * HALF);
+#else
 		sineTable[i] = (uint8_t)((sinf((float)i * (float)M_PI / 128.0f) + 1.0f)
 		                         * (AMP / 2.0f) + 0.5f);
+#endif
 	for (uint8_t v = 0; v < N; v++)
 		vnote[v] = 0xFF;
 	polyPoll();
@@ -118,7 +139,13 @@ void polyPoll(void) {
 		return;
 	tblMode = mode;
 	tblPot = pot;
+#ifdef SINE_ENV
+	envMode = 0;
 	buildTable(mode, pot);
+	envMode = (mode == 2);
+#else
+	buildTable(mode, pot);
+#endif
 }
 
 // wavetable[idx] as ZL = idx, ZH = hi8(wavetable): 4 cycles
@@ -138,8 +165,32 @@ static inline uint8_t lookup(uint8_t idx) {
 		sum += lookup((uint8_t)(a >> (POLY_ACC_BITS - 8))); \
 	}
 
+#ifdef SINE_ENV
+#define VOICE_ENV(i) \
+	if (N > i && inc[i]) { \
+		acc_t a = acc[i] + inc[i]; \
+		acc[i] = a; \
+		int8_t s = (int8_t)lookup((uint8_t)(a >> (POLY_ACC_BITS - 8))); \
+		ssum += (int8_t)(((int16_t)s * venvOut[i]) >> 8); \
+	}
+#endif
+
 ISR(TIMER0_COMPA_vect) {
 	OCR2B = outNext;	// output first: no jitter from voice count
+
+#ifdef SINE_ENV
+	if (envMode) {
+		asm volatile ("" ::: "memory");	// keep voice loads inside each path
+		int8_t ssum = 0;
+		VOICE_ENV(0)  VOICE_ENV(1)  VOICE_ENV(2)  VOICE_ENV(3)
+		VOICE_ENV(4)  VOICE_ENV(5)  VOICE_ENV(6)  VOICE_ENV(7)
+		VOICE_ENV(8)  VOICE_ENV(9)  VOICE_ENV(10) VOICE_ENV(11)
+		VOICE_ENV(12) VOICE_ENV(13) VOICE_ENV(14) VOICE_ENV(15)
+		outNext = BIAS + ssum;
+		return;
+	}
+	asm volatile ("" ::: "memory");
+#endif
 
 	uint8_t sum = 0;
 	VOICE(0)  VOICE(1)  VOICE(2)  VOICE(3)
@@ -151,7 +202,11 @@ ISR(TIMER0_COMPA_vect) {
 
 static void updateLed(void) {
 	for (uint8_t v = 0; v < N; v++) {
+#ifdef SINE_ENV
+		if (inc[v]) {		// releasing voices still sound
+#else
 		if (vnote[v] != 0xFF) {
+#endif
 			PORTD |= (1 << 7);
 			midiActive = 1;
 			return;
@@ -176,11 +231,20 @@ void noteOn(uint8_t note) {
 		for (v = 0; v < N; v++)
 			if (vnote[v] == note)
 				break;
+#ifdef SINE_ENV
+		uint8_t retrigger = (v < N);
+		if (v == N) {
+			for (v = 0; v < N; v++)
+				if (inc[v] == 0)	// not even releasing
+					break;
+		}
+#else
 		if (v == N) {
 			for (v = 0; v < N; v++)
 				if (vnote[v] == 0xFF)
 					break;
 		}
+#endif
 		if (v == N) {	// steal the oldest voice
 			for (uint8_t k = 0; k < N; k++) {
 				uint16_t age = stamp - vstamp[k];
@@ -194,7 +258,16 @@ void noteOn(uint8_t note) {
 
 		vnote[v] = note;
 		vstamp[v] = ++stamp;
+#ifdef SINE_ENV
+		if (!retrigger) {	// same held note keeps phase and level
+			acc[v] = 0;
+			venv[v].level = 0;
+		}
+		envStart(&venv[v]);
+		venvOut[v] = venv[v].level >> 8;
+#else
 		acc[v] = 0;
+#endif
 		inc[v] = newInc;
 		updateLed();
 	}
@@ -205,6 +278,12 @@ void noteRelease(uint8_t note) {
 		for (uint8_t v = 0; v < N; v++) {
 			if (vnote[v] == note) {
 				vnote[v] = 0xFF;
+#ifdef SINE_ENV
+				if (envMode) {
+					envRelease(&venv[v]);
+					continue;
+				}
+#endif
 				inc[v] = 0;
 			}
 		}
@@ -218,10 +297,44 @@ void noteOff(void) {
 			vnote[v] = 0xFF;
 			inc[v] = 0;
 		}
+#ifdef SINE_ENV
+		outNext = envMode ? BIAS : 0;
+#else
 		outNext = 0;
-		OCR2B = 0;
+#endif
+		OCR2B = outNext;
 		updateLed();
 	}
 }
+
+#ifdef SINE_ENV
+// Main loop: 1 ms envelope steps for every sounding voice.
+void envPoll(void) {
+	uint8_t n = envElapsed();
+	if (!envMode)
+		return;
+	envSetPot(potValue);
+	uint8_t ended = 0;
+	while (n--) {
+		for (uint8_t v = 0; v < N; v++) {
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				if (inc[v]) {
+					venvOut[v] = envStep(&venv[v]);
+					if (venv[v].stage == ENV_IDLE) {
+						inc[v] = 0;
+						vnote[v] = 0xFF;
+						ended = 1;
+					}
+				}
+			}
+		}
+	}
+	if (ended) {
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+			updateLed();
+		}
+	}
+}
+#endif
 
 #endif

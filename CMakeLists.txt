@@ -16,6 +16,7 @@ set(POLY_VOICES   4     CACHE STRING "Number of voices, 1..16 (build checks CPU 
 set(POLY_FS       31250 CACHE STRING "Sample rate, Hz")
 set(POLY_PWM_TOP  255   CACHE STRING "Timer2 TOP (255 = 62.5 kHz, 99 = 160 kHz)")
 set(POLY_ACC_BITS 24    CACHE STRING "Phase accumulator width (16 or 24)")
+option(POLY_SINE_ENV "Poly: pot drives the sine envelope (pluck -> organ -> pad)" ON)
 
 file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/fw/src/*.cpp)
 
@@ -40,7 +41,12 @@ function(avr_firmware name)
 		DEPENDS ${name})
 endfunction()
 
-avr_firmware(midi2aux)
-avr_firmware(midi2aux_poly
-	POLY_VOICES=${POLY_VOICES} POLY_FS=${POLY_FS}
+set(POLY_DEFS POLY_VOICES=${POLY_VOICES} POLY_FS=${POLY_FS}
 	POLY_PWM_TOP=${POLY_PWM_TOP} POLY_ACC_BITS=${POLY_ACC_BITS})
+if(POLY_SINE_ENV)
+	list(APPEND POLY_DEFS SINE_ENV)
+endif()
+
+avr_firmware(midi2aux)			# original mono, identical to master
+avr_firmware(midi2aux_env SINE_ENV)	# mono + sine envelope on the pot
+avr_firmware(midi2aux_poly ${POLY_DEFS})

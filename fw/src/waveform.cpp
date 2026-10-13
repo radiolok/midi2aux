@@ -7,6 +7,10 @@ volatile uint8_t waveMode = 0;
 
 #ifndef POLY_VOICES
 
+#ifdef SINE_ENV
+volatile uint8_t envOut = 255;
+#endif
+
 static volatile uint8_t phase = 0;
 static uint8_t sine[16];
 
@@ -51,6 +55,12 @@ ISR(TIMER0_COMPA_vect) {
 		break;
 	}
 	case 2: {
+#ifdef SINE_ENV
+		uint8_t idx = phase & 31;
+		uint8_t s = (idx < 16) ? sine[idx] : sine[31 - idx];
+		s = ((uint16_t)s * envOut) >> 8;
+		pwm = (phase < 32) ? 50 + s : 50 - s;
+#else
 		if (phase < 16)
 			pwm = 50 + sine[phase];
 		else if (phase < 32)
@@ -59,6 +69,7 @@ ISR(TIMER0_COMPA_vect) {
 			pwm = 50 - sine[phase - 32];
 		else
 			pwm = 50 - sine[63 - phase];
+#endif
 		break;
 	}
 	}

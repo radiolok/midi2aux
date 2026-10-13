@@ -6,6 +6,7 @@
 #include "midi.h"
 #include "waveform.h"
 #include "poly.h"
+#include "envelope.h"
 
 #ifdef POLY_VOICES
 #define PWM_TOP POLY_PWM_TOP
@@ -44,8 +45,13 @@ ISR(ADC_vect) {
 
 static void initTimer1Btn(void) {
 	TCCR1A = 0;
+#ifdef SINE_ENV
+	TCCR1B = (1 << WGM12) | (1 << CS11) | (1 << CS10);	// 1 ms: envelope tick
+	OCR1A  = 249;
+#else
 	TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);
 	OCR1A  = 155;
+#endif
 	TIMSK1 = (1 << OCIE1A);
 }
 
@@ -53,6 +59,13 @@ static uint8_t btnState = 0;
 static uint8_t btnCounter = 0;
 
 ISR(TIMER1_COMPA_vect) {
+#ifdef SINE_ENV
+	static uint8_t btnDiv = 0;
+	msTicks++;
+	if (++btnDiv < 10)	// button logic keeps its 10 ms tick
+		return;
+	btnDiv = 0;
+#endif
 	uint8_t btn = (PINC & (1 << 1)) ? 1 : 0;
 
 	switch (btnState) {
@@ -104,6 +117,9 @@ int main(void) {
 #ifdef POLY_VOICES
 		uart_poll();
 		polyPoll();
+#endif
+#ifdef SINE_ENV
+		envPoll();
 #endif
 		sleep_mode();
 	}

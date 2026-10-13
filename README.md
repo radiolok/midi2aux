@@ -24,7 +24,7 @@ Firmware for Arduino Nano (ATmega328P) that converts MIDI Note-On/Off messages i
 |------|----------|---------------------|
 | 0 | Square | Duty cycle (0–100%) |
 | 1 | Triangle | Rise/fall split point (fully left/right = sawtooth) |
-| 2 | Sine | None (fixed) |
+| 2 | Sine | None in the original build; with `SINE_ENV` — envelope character: pluck → organ → pad (see below) |
 
 Short press the button to cycle modes. All notes are silenced on press.
 
@@ -90,17 +90,59 @@ Pitch is exact (< 0.05 cent). The trade-offs against mono: a single note plays a
 full scale, high notes alias (fewer samples per period), and PWM ripple rises (62.5 kHz
 instead of 160 kHz carrier). Full analysis: [docs/polyphony.md](docs/polyphony.md).
 
+### Sine envelope (`SINE_ENV`)
+
+In sine mode the potentiometer has nothing to control, so with `SINE_ENV` it sets the
+amplitude envelope. One knob morphs smoothly between sound characters:
+
+| Pot position | Character | Attack | While the key is held | After the key is released |
+|---|---|---|---|---|
+| 0 → 50 % | pluck / bell | 2 ms | decays to silence, 50 ms → 3 s | damped within 80 ms |
+| 50 → 100 % | organ → pad | 2 ms → 1 s | sustains at 100 % | fades out, 50 ms → 2 s |
+
+Times change exponentially along the knob. Decay and release are exponential curves;
+times are to −40 dB. The other waveforms keep their pot functions (duty, split) and are
+gated as before.
+
+How it works:
+
+- Timer1 ticks every 1 ms instead of 10 ms. The button logic runs on every 10th tick,
+  so debouncing is unchanged.
+- The main loop steps the envelope once per millisecond: linear attack, then
+  `level = level · k >> 16` for decay and release. It recomputes the parameters (`expf`,
+  `powf`) only when the pot moves by more than 4 steps.
+- The sample ISR multiplies each sine sample by the 8-bit envelope level. Mono: +1 `mul`,
+  the sine path is ≈ 126 cycles, under the 200-cycle minimum sample period. Poly: signed
+  table, `mulsu` per voice, sum centred on mid-scale.
+- Note Off starts the release. The voice (or the mono Timer0) keeps running until the
+  envelope reaches silence. Re-pressing a held note retriggers its envelope without a
+  phase reset.
+- In sine mode the output idles at mid-scale instead of 0, so fades end without a DC step
+  (click). The button and MIDI Stop still silence everything at once.
+
+Poly cost with `SINE_ENV`: the sine path is ≈ 86 + 36·N cycles (N = 4: 230 cycles, 45 % CPU).
+The other waveforms stay at ≈ 83 + 30·N. The budget check uses the sine path, so with
+`SINE_ENV` the limit is 10 voices at 31.25 kHz.
+
+Resolution limits how deep a fade sounds clean. The mono sine spans ±49 PWM levels, so at
+−20 dB only ±5 levels remain and the tail turns grainy. Poly with N = 4 has ±31 per voice.
+
 ## Building & Upload
 
 ```bash
 cmake -S . -B build          # avr-gcc from PATH, or -DAVR_TOOLCHAIN_DIR=/path/to/bin
-cmake --build build          # build/midi2aux.hex (mono) + build/midi2aux_poly.hex
-cmake --build build --target upload_midi2aux       # avrdude, -DAVR_PORT=/dev/ttyUSB0
-cmake --build build --target upload_midi2aux_poly
+cmake --build build          # all three targets below
+cmake --build build --target upload_midi2aux_env   # avrdude, -DAVR_PORT=/dev/ttyUSB0
 ```
 
+| Target | Firmware |
+|---|---|
+| `midi2aux` | Original mono, byte-identical to master |
+| `midi2aux_env` | Mono + sine envelope on the pot (`SINE_ENV`) |
+| `midi2aux_poly` | Poly; sine envelope on by default (`-DPOLY_SINE_ENV=OFF` to disable) |
+
 Poly options: `-DPOLY_VOICES=1..16`, `-DPOLY_FS=31250`, `-DPOLY_PWM_TOP=255`,
-`-DPOLY_ACC_BITS=24`. Prebuilt images are in [fw/bin/](fw/bin/). PlatformIO
+`-DPOLY_ACC_BITS=24`, `-DPOLY_SINE_ENV=ON`. Prebuilt images are in [fw/bin/](fw/bin/). PlatformIO
 (`pio run`) still builds the mono variant.
 
 Remove MIDI jumper before upload — optocoupler gate (PD2) isolates RX.
@@ -112,7 +154,7 @@ In poly mode the main loop also parses MIDI and rebuilds the wavetable.
 
 | Subsystem | Timer | Interrupt | Priority | Description |
 |-----------|-------|-----------|----------|-------------|
-| Button | Timer1 | `TIMER1_COMPA_vect` | **High** | 10 ms tick, debounce 30 ms, calls `noteOff()` on press |
+| Button | Timer1 | `TIMER1_COMPA_vect` | **High** | 10 ms tick (1 ms with `SINE_ENV`, button every 10th), debounce 30 ms, calls `noteOff()` on press |
 | Waveform | Timer0 | `TIMER0_COMPA_vect` | Low | Generates PWM sample at note × 64 Hz |
 | Audio PWM | Timer2 | — | — | 160 kHz Fast PWM on PD3, OCR2B updated by waveform ISR |
 | ADC | — | `ADC_vect` | — | Free-running, updates `potValue` every 104 µs |
@@ -129,10 +171,10 @@ Sample period clamped to ≥ 200 cycles (square, sine) or ≥ 350 cycles (triang
 
 ### Memory
 
-| Resource | Mono | Poly (default, 4 voices) |
-|----------|------|-----------------|
-| Flash | 2656 bytes (8.1%) | 3130 bytes (9.6%) |
-| RAM | 74 bytes (3.6%) | 827 bytes (40.4%) |
+| Resource | Mono | Mono + `SINE_ENV` | Poly (default: 4 voices, `SINE_ENV`) |
+|----------|------|------|-----------------|
+| Flash | 2656 bytes (8.1%) | 4640 bytes (14.2%) | 5802 bytes (17.7%) |
+| RAM | 74 bytes (3.6%) | 91 bytes (4.4%) | 827 bytes (40.4%) |
 
 ## Project Structure
 
@@ -144,8 +186,9 @@ fw/src/
 ├── uart.h / uart.cpp # MIDI UART (RX-only; poly: ring buffer)
 ├── midi.h / midi.cpp # Note period table, MIDI parser, noteOn/noteOff
 ├── waveform.h / waveform.cpp  # Mono: sine table, waveform ISR, 3 modes
-└── poly.h / poly.cpp # Poly: DDS voices, wavetable, voice allocation
-fw/bin/               # Prebuilt .hex (mono, poly4)
+├── poly.h / poly.cpp # Poly: DDS voices, wavetable, voice allocation
+└── envelope.h / envelope.cpp  # SINE_ENV: pot-controlled sine envelope
+fw/bin/               # Prebuilt .hex (mono, mono_env, poly4)
 docs/polyphony.md     # Polyphony analysis and cycle budget
 img/                  # Photo, block diagrams (SVG)
 tools/isrcycles.py    # ISR cycle count from avr-objdump listing
