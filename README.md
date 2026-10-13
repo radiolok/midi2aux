@@ -67,6 +67,12 @@ be shorter than the waveform ISR, so the minimum period is 200 cycles for square
 longer depends on the note: it **ticks at a fixed
 31.25 kHz**, and each voice is a DDS phase accumulator.
 
+![DDS: phase accumulator, table lookup and voice sum](img/dds.svg)
+
+Each sample, every sounding voice adds its step `inc` to a 24-bit phase accumulator. The
+top byte of the accumulator indexes a 256-entry wavetable. The pitch is set by the step
+size alone, so all voices share one timer and one table.
+
 1. `USART_RX_vect` only puts the byte into a 16-byte ring buffer (≈ 5 ms of MIDI). The
    main loop wakes after every interrupt, drains the buffer and runs `midiParser()`. That
    keeps the slow work (voice search, voice stealing) out of interrupt context.
@@ -99,6 +105,10 @@ amplitude envelope. One knob morphs smoothly between sound characters:
 |---|---|---|---|---|
 | 0 → 50 % | pluck / bell | 2 ms | decays to silence, 50 ms → 3 s | damped within 80 ms |
 | 50 → 100 % | organ → pad | 2 ms → 1 s | sustains at 100 % | fades out, 50 ms → 2 s |
+
+![Envelope shape at six knob positions](img/env-shapes.svg)
+
+![Attack, decay and release times along the knob](img/env-times.svg)
 
 Times change exponentially along the knob. Decay and release are exponential curves;
 times are to −40 dB. The other waveforms keep their pot functions (duty, split) and are
@@ -190,8 +200,9 @@ fw/src/
 └── envelope.h / envelope.cpp  # SINE_ENV: pot-controlled sine envelope
 fw/bin/               # Prebuilt .hex (mono, mono_env, poly4, poly4_env, poly1_env)
 docs/polyphony.md     # Polyphony analysis and cycle budget
-img/                  # Photo, block diagrams (SVG)
+img/                  # Photo, block diagrams and figures (SVG)
 tools/isrcycles.py    # ISR cycle count from avr-objdump listing
+tools/gen_*.py        # Regenerate the SVGs in img/
 ```
 
 ---

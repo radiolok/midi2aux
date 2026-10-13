@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="780" viewBox="0 0 900 780" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img">
+<title>How a poly voice makes sound: DDS</title><desc>Block chain from note to OCR2B, then aligned plots of the phase accumulator, the looked-up samples and the sum of two voices.</desc>
+<rect width="900" height="780" fill="#fcfcfb"/>
+<text x="24.0" y="34.0" font-size="16" fill="#0b0b0b" text-anchor="start" font-weight="600">How a poly voice makes sound: DDS</text>
+<text x="24.0" y="54.0" font-size="12" fill="#52514e" text-anchor="start" font-weight="400">Direct digital synthesis at a fixed sample rate fs = 31.25 kHz (one sample every 32 µs).</text>
+<rect x="24" y="104" width="104" height="54" rx="7" fill="#ebe6f7" stroke="#6b55a8" stroke-width="1.5"/>
+<text x="76.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">MIDI note</text>
+<text x="76.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">Note On</text>
+<rect x="144" y="104" width="104" height="54" rx="7" fill="#ebe6f7" stroke="#6b55a8" stroke-width="1.5"/>
+<text x="196.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">inc</text>
+<text x="196.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">f · 2²⁴ / fs</text>
+<rect x="264" y="104" width="104" height="54" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="316.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">acc += inc</text>
+<text x="316.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">24-bit, wraps</text>
+<rect x="384" y="104" width="104" height="54" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="436.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">index</text>
+<text x="436.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">acc &gt;&gt; 16</text>
+<rect x="504" y="104" width="104" height="54" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="556.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">wavetable[i]</text>
+<text x="556.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">256 bytes, shared</text>
+<rect x="624" y="104" width="104" height="54" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="676.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">× envelope</text>
+<text x="676.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">sine mode only</text>
+<rect x="744" y="104" width="104" height="54" rx="7" fill="#fdf0dc" stroke="#c47f17" stroke-width="1.5"/>
+<text x="796.0" y="128.0" font-size="12" fill="#0b0b0b" text-anchor="middle" font-weight="600">Σ voices</text>
+<text x="796.0" y="144.0" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="400">→ OCR2B</text>
+<line x1="128.0" y1="131.0" x2="138.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M137,127.0 L144,131.0 L137,135.0 z" fill="#444c56"/>
+<line x1="248.0" y1="131.0" x2="258.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M257,127.0 L264,131.0 L257,135.0 z" fill="#444c56"/>
+<line x1="368.0" y1="131.0" x2="378.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M377,127.0 L384,131.0 L377,135.0 z" fill="#444c56"/>
+<line x1="488.0" y1="131.0" x2="498.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M497,127.0 L504,131.0 L497,135.0 z" fill="#444c56"/>
+<line x1="608.0" y1="131.0" x2="618.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M617,127.0 L624,131.0 L617,135.0 z" fill="#444c56"/>
+<line x1="728.0" y1="131.0" x2="738.0" y2="131.0" stroke="#444c56" stroke-width="1.4"/>
+<path d="M737,127.0 L744,131.0 L737,135.0 z" fill="#444c56"/>
+<text x="136.0" y="92.0" font-size="11.5" fill="#6b55a8" text-anchor="middle" font-weight="600">main loop, once per Note On</text>
+<text x="556.0" y="92.0" font-size="11.5" fill="#a86a10" text-anchor="middle" font-weight="600">TIMER0_COMPA ISR, every sample, for each sounding voice</text>
+<text x="24.0" y="206.0" font-size="12.5" fill="#0b0b0b" text-anchor="start" font-weight="600">Phase accumulator acc (one voice, f = 2.5 kHz)</text>
+<line x1="92.0" y1="330.0" x2="612.0" y2="330.0" stroke="#b9b8b2" stroke-width="1"/>
+<text x="84.0" y="334.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">0</text>
+<line x1="92.0" y1="275.0" x2="612.0" y2="275.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="279.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">2²³</text>
+<line x1="92.0" y1="220.0" x2="612.0" y2="220.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="224.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">2²⁴</text>
+<path d="M92.0,330.0 L108.2,330.0 L108.2,321.2 L124.5,321.2 L124.5,312.4 L140.8,312.4 L140.8,303.6 L157.0,303.6 L157.0,294.8 L173.2,294.8 L173.2,286.0 L189.5,286.0 L189.5,277.2 L205.8,277.2 L205.8,268.4 L222.0,268.4 L222.0,259.6 L238.2,259.6 L238.2,250.8 L254.5,250.8 L254.5,242.0 L270.8,242.0 L270.8,233.2 L287.0,233.2 L287.0,224.4 L303.2,224.4 L303.2,325.6 L319.5,325.6 L319.5,316.8 L335.8,316.8 L335.8,308.0 L352.0,308.0 L352.0,299.2 L368.2,299.2 L368.2,290.4 L384.5,290.4 L384.5,281.6 L400.8,281.6 L400.8,272.8 L417.0,272.8 L417.0,264.0 L433.2,264.0 L433.2,255.2 L449.5,255.2 L449.5,246.4 L465.8,246.4 L465.8,237.6 L482.0,237.6 L482.0,228.8 L498.2,228.8 L498.2,220.0 L514.5,220.0 L514.5,321.2 L530.8,321.2 L530.8,312.4 L547.0,312.4 L547.0,303.6 L563.2,303.6 L563.2,294.8 L579.5,294.8 L579.5,286.0 L595.8,286.0 L595.8,277.2 L612.0,277.2" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="92.0" cy="330.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="108.2" cy="321.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="124.5" cy="312.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="140.8" cy="303.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="157.0" cy="294.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="173.2" cy="286.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="189.5" cy="277.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="205.8" cy="268.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="222.0" cy="259.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="238.2" cy="250.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="254.5" cy="242.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="270.8" cy="233.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="287.0" cy="224.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="303.2" cy="325.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="319.5" cy="316.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="335.8" cy="308.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="352.0" cy="299.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="368.2" cy="290.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="384.5" cy="281.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="400.8" cy="272.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="417.0" cy="264.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="433.2" cy="255.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="449.5" cy="246.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="465.8" cy="237.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="482.0" cy="228.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="498.2" cy="220.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="514.5" cy="321.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="530.8" cy="312.4" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="547.0" cy="303.6" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="563.2" cy="294.8" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="579.5" cy="286.0" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<circle cx="595.8" cy="277.2" r="3" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="352.0" y="348.0" font-size="11" fill="#52514e" text-anchor="middle" font-weight="400">each sample: acc += inc = 1 342 177; past 2²⁴ it wraps and the next period starts</text>
+<text x="24.0" y="386.0" font-size="12.5" fill="#0b0b0b" text-anchor="start" font-weight="600">Sample = wavetable[acc &gt;&gt; 16]  (sine table, 0…63)</text>
+<line x1="92.0" y1="510.0" x2="612.0" y2="510.0" stroke="#b9b8b2" stroke-width="1"/>
+<text x="84.0" y="514.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">0</text>
+<line x1="92.0" y1="455.0" x2="612.0" y2="455.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="459.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">32</text>
+<line x1="92.0" y1="400.0" x2="612.0" y2="400.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="404.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">63</text>
+<path d="M92.0,455.0 L93.6,452.2 L95.2,449.5 L96.9,446.7 L98.5,444.0 L100.1,441.3 L101.8,438.7 L103.4,436.0 L105.0,433.5 L106.6,431.0 L108.2,428.5 L109.9,426.1 L111.5,423.8 L113.1,421.6 L114.8,419.4 L116.4,417.3 L118.0,415.4 L119.6,413.5 L121.2,411.8 L122.9,410.1 L124.5,408.6 L126.1,407.1 L127.8,405.8 L129.4,404.7 L131.0,403.6 L132.6,402.7 L134.2,401.9 L135.9,401.3 L137.5,400.7 L139.1,400.4 L140.8,400.1 L142.4,400.0 L144.0,400.0 L145.6,400.2 L147.2,400.5 L148.9,401.0 L150.5,401.6 L152.1,402.3 L153.8,403.1 L155.4,404.1 L157.0,405.2 L158.6,406.5 L160.2,407.8 L161.9,409.3 L163.5,410.9 L165.1,412.6 L166.8,414.4 L168.4,416.4 L170.0,418.4 L171.6,420.5 L173.2,422.7 L174.9,424.9 L176.5,427.3 L178.1,429.7 L179.8,432.2 L181.4,434.8 L183.0,437.3 L184.6,440.0 L186.2,442.7 L187.9,445.4 L189.5,448.1 L191.1,450.9 L192.8,453.6 L194.4,456.4 L196.0,459.1 L197.6,461.9 L199.2,464.6 L200.9,467.3 L202.5,470.0 L204.1,472.7 L205.8,475.2 L207.4,477.8 L209.0,480.3 L210.6,482.7 L212.2,485.1 L213.9,487.3 L215.5,489.5 L217.1,491.6 L218.8,493.6 L220.4,495.6 L222.0,497.4 L223.6,499.1 L225.2,500.7 L226.9,502.2 L228.5,503.5 L230.1,504.8 L231.8,505.9 L233.4,506.9 L235.0,507.7 L236.6,508.4 L238.2,509.0 L239.9,509.5 L241.5,509.8 L243.1,510.0 L244.8,510.0 L246.4,509.9 L248.0,509.6 L249.6,509.3 L251.2,508.7 L252.9,508.1 L254.5,507.3 L256.1,506.4 L257.8,505.3 L259.4,504.2 L261.0,502.9 L262.6,501.4 L264.2,499.9 L265.9,498.2 L267.5,496.5 L269.1,494.6 L270.8,492.7 L272.4,490.6 L274.0,488.4 L275.6,486.2 L277.2,483.9 L278.9,481.5 L280.5,479.0 L282.1,476.5 L283.8,474.0 L285.4,471.3 L287.0,468.7 L288.6,466.0 L290.2,463.3 L291.9,460.5 L293.5,457.8 L295.1,455.0 L296.8,452.2 L298.4,449.5 L300.0,446.7 L301.6,444.0 L303.2,441.3 L304.9,438.7 L306.5,436.0 L308.1,433.5 L309.8,431.0 L311.4,428.5 L313.0,426.1 L314.6,423.8 L316.2,421.6 L317.9,419.4 L319.5,417.3 L321.1,415.4 L322.8,413.5 L324.4,411.8 L326.0,410.1 L327.6,408.6 L329.2,407.1 L330.9,405.8 L332.5,404.7 L334.1,403.6 L335.8,402.7 L337.4,401.9 L339.0,401.3 L340.6,400.7 L342.2,400.4 L343.9,400.1 L345.5,400.0 L347.1,400.0 L348.8,400.2 L350.4,400.5 L352.0,401.0 L353.6,401.6 L355.2,402.3 L356.9,403.1 L358.5,404.1 L360.1,405.2 L361.8,406.5 L363.4,407.8 L365.0,409.3 L366.6,410.9 L368.2,412.6 L369.9,414.4 L371.5,416.4 L373.1,418.4 L374.8,420.5 L376.4,422.7 L378.0,424.9 L379.6,427.3 L381.2,429.7 L382.9,432.2 L384.5,434.8 L386.1,437.3 L387.8,440.0 L389.4,442.7 L391.0,445.4 L392.6,448.1 L394.2,450.9 L395.9,453.6 L397.5,456.4 L399.1,459.1 L400.8,461.9 L402.4,464.6 L404.0,467.3 L405.6,470.0 L407.2,472.7 L408.9,475.2 L410.5,477.8 L412.1,480.3 L413.8,482.7 L415.4,485.1 L417.0,487.3 L418.6,489.5 L420.2,491.6 L421.9,493.6 L423.5,495.6 L425.1,497.4 L426.8,499.1 L428.4,500.7 L430.0,502.2 L431.6,503.5 L433.2,504.8 L434.9,505.9 L436.5,506.9 L438.1,507.7 L439.8,508.4 L441.4,509.0 L443.0,509.5 L444.6,509.8 L446.2,510.0 L447.9,510.0 L449.5,509.9 L451.1,509.6 L452.8,509.3 L454.4,508.7 L456.0,508.1 L457.6,507.3 L459.2,506.4 L460.9,505.3 L462.5,504.2 L464.1,502.9 L465.8,501.4 L467.4,499.9 L469.0,498.2 L470.6,496.5 L472.2,494.6 L473.9,492.7 L475.5,490.6 L477.1,488.4 L478.8,486.2 L480.4,483.9 L482.0,481.5 L483.6,479.0 L485.2,476.5 L486.9,474.0 L488.5,471.3 L490.1,468.7 L491.8,466.0 L493.4,463.3 L495.0,460.5 L496.6,457.8 L498.2,455.0 L499.9,452.2 L501.5,449.5 L503.1,446.7 L504.8,444.0 L506.4,441.3 L508.0,438.7 L509.6,436.0 L511.2,433.5 L512.9,431.0 L514.5,428.5 L516.1,426.1 L517.8,423.8 L519.4,421.6 L521.0,419.4 L522.6,417.3 L524.2,415.4 L525.9,413.5 L527.5,411.8 L529.1,410.1 L530.8,408.6 L532.4,407.1 L534.0,405.8 L535.6,404.7 L537.2,403.6 L538.9,402.7 L540.5,401.9 L542.1,401.3 L543.8,400.7 L545.4,400.4 L547.0,400.1 L548.6,400.0 L550.2,400.0 L551.9,400.2 L553.5,400.5 L555.1,401.0 L556.8,401.6 L558.4,402.3 L560.0,403.1 L561.6,404.1 L563.2,405.2 L564.9,406.5 L566.5,407.8 L568.1,409.3 L569.8,410.9 L571.4,412.6 L573.0,414.4 L574.6,416.4 L576.2,418.4 L577.9,420.5 L579.5,422.7 L581.1,424.9 L582.8,427.3 L584.4,429.7 L586.0,432.2 L587.6,434.8 L589.2,437.3 L590.9,440.0 L592.5,442.7 L594.1,445.4 L595.8,448.1 L597.4,450.9 L599.0,453.6 L600.6,456.4 L602.2,459.1 L603.9,461.9 L605.5,464.6 L607.1,467.3 L608.8,470.0 L610.4,472.7 L612.0,475.2" fill="none" stroke="#c9c8c2" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3 3"/>
+<path d="M92.0,454.1 L108.2,454.1 L108.2,429.7 L124.5,429.7 L124.5,408.7 L140.8,408.7 L140.8,400.0 L157.0,400.0 L157.0,405.2 L173.2,405.2 L173.2,422.7 L189.5,422.7 L189.5,447.1 L205.8,447.1 L205.8,475.1 L222.0,475.1 L222.0,496.0 L238.2,496.0 L238.2,508.3 L254.5,508.3 L254.5,508.3 L270.8,508.3 L270.8,492.5 L287.0,492.5 L287.0,469.8 L303.2,469.8 L303.2,441.9 L319.5,441.9 L319.5,417.5 L335.8,417.5 L335.8,403.5 L352.0,403.5 L352.0,400.0 L368.2,400.0 L368.2,412.2 L384.5,412.2 L384.5,433.2 L400.8,433.2 L400.8,461.1 L417.0,461.1 L417.0,487.3 L433.2,487.3 L433.2,504.8 L449.5,504.8 L449.5,510.0 L465.8,510.0 L465.8,501.3 L482.0,501.3 L482.0,482.1 L498.2,482.1 L498.2,455.9 L514.5,455.9 L514.5,429.7 L530.8,429.7 L530.8,408.7 L547.0,408.7 L547.0,400.0 L563.2,400.0 L563.2,405.2 L579.5,405.2 L579.5,422.7 L595.8,422.7 L595.8,447.1 L612.0,447.1" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="620.0" y="410.5" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">held for one</text>
+<text x="620.0" y="424.5" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">sample (32 µs)</text>
+<text x="620.0" y="471.6" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">dashed: ideal</text>
+<text x="620.0" y="485.6" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">sine</text>
+<text x="24.0" y="566.0" font-size="12.5" fill="#0b0b0b" text-anchor="start" font-weight="600">Two voices (2.5 kHz + 3.75 kHz) summed into OCR2B (0…255)</text>
+<line x1="92.0" y1="710.0" x2="612.0" y2="710.0" stroke="#b9b8b2" stroke-width="1"/>
+<text x="84.0" y="714.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">0</text>
+<line x1="92.0" y1="645.0" x2="612.0" y2="645.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="649.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">128</text>
+<line x1="92.0" y1="580.0" x2="612.0" y2="580.0" stroke="#e6e5e1" stroke-width="1"/>
+<text x="84.0" y="584.0" font-size="10.5" fill="#52514e" text-anchor="end" font-weight="400">255</text>
+<path d="M92.0,693.7 L108.2,693.7 L108.2,686.5 L124.5,686.5 L124.5,680.4 L140.8,680.4 L140.8,677.9 L157.0,677.9 L157.0,679.4 L173.2,679.4 L173.2,684.5 L189.5,684.5 L189.5,691.6 L205.8,691.6 L205.8,699.8 L222.0,699.8 L222.0,705.9 L238.2,705.9 L238.2,709.5 L254.5,709.5 L254.5,709.5 L270.8,709.5 L270.8,704.9 L287.0,704.9 L287.0,698.3 L303.2,698.3 L303.2,690.1 L319.5,690.1 L319.5,683.0 L335.8,683.0 L335.8,678.9 L352.0,678.9 L352.0,677.9 L368.2,677.9 L368.2,681.5 L384.5,681.5 L384.5,687.6 L400.8,687.6 L400.8,695.7 L417.0,695.7 L417.0,703.4 L433.2,703.4 L433.2,708.5 L449.5,708.5 L449.5,710.0 L465.8,710.0 L465.8,707.5 L482.0,707.5 L482.0,701.8 L498.2,701.8 L498.2,694.2 L514.5,694.2 L514.5,686.5 L530.8,686.5 L530.8,680.4 L547.0,680.4 L547.0,677.9 L563.2,677.9 L563.2,679.4 L579.5,679.4 L579.5,684.5 L595.8,684.5 L595.8,691.6 L612.0,691.6" fill="none" stroke="#2a78d6" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M92.0,693.7 L108.2,693.7 L108.2,683.0 L124.5,683.0 L124.5,677.9 L140.8,677.9 L140.8,681.5 L157.0,681.5 L157.0,691.6 L173.2,691.6 L173.2,703.4 L189.5,703.4 L189.5,709.5 L205.8,709.5 L205.8,707.5 L222.0,707.5 L222.0,698.3 L238.2,698.3 L238.2,686.5 L254.5,686.5 L254.5,678.9 L270.8,678.9 L270.8,679.4 L287.0,679.4 L287.0,687.6 L303.2,687.6 L303.2,699.8 L319.5,699.8 L319.5,708.5 L335.8,708.5 L335.8,709.5 L352.0,709.5 L352.0,701.8 L368.2,701.8 L368.2,690.1 L384.5,690.1 L384.5,680.4 L400.8,680.4 L400.8,677.9 L417.0,677.9 L417.0,684.5 L433.2,684.5 L433.2,695.7 L449.5,695.7 L449.5,705.9 L465.8,705.9 L465.8,710.0 L482.0,710.0 L482.0,704.9 L498.2,704.9 L498.2,693.7 L514.5,693.7 L514.5,683.0 L530.8,683.0 L530.8,677.9 L547.0,677.9 L547.0,681.5 L563.2,681.5 L563.2,691.6 L579.5,691.6 L579.5,703.4 L595.8,703.4 L595.8,709.5 L612.0,709.5" fill="none" stroke="#eb6834" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M92.0,677.4 L108.2,677.4 L108.2,659.5 L124.5,659.5 L124.5,648.3 L140.8,648.3 L140.8,649.3 L157.0,649.3 L157.0,661.1 L173.2,661.1 L173.2,677.9 L189.5,677.9 L189.5,691.1 L205.8,691.1 L205.8,697.3 L222.0,697.3 L222.0,694.2 L238.2,694.2 L238.2,686.0 L254.5,686.0 L254.5,678.4 L270.8,678.4 L270.8,674.3 L287.0,674.3 L287.0,675.8 L303.2,675.8 L303.2,679.9 L319.5,679.9 L319.5,681.5 L335.8,681.5 L335.8,678.4 L352.0,678.4 L352.0,669.7 L368.2,669.7 L368.2,661.6 L384.5,661.6 L384.5,658.0 L400.8,658.0 L400.8,663.6 L417.0,663.6 L417.0,677.9 L433.2,677.9 L433.2,694.2 L449.5,694.2 L449.5,705.9 L465.8,705.9 L465.8,707.5 L482.0,707.5 L482.0,696.7 L498.2,696.7 L498.2,677.9 L514.5,677.9 L514.5,659.5 L530.8,659.5 L530.8,648.3 L547.0,648.3 L547.0,649.3 L563.2,649.3 L563.2,661.1 L579.5,661.1 L579.5,677.9 L595.8,677.9 L595.8,691.1 L612.0,691.1" fill="none" stroke="#1baf7a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="620.0" y="695.1" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="600">sum → OCR2B</text>
+<text x="620.0" y="709.1" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="400">voice 1</text>
+<text x="620.0" y="723.1" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="400">voice 2</text>
+<text x="620.0" y="594.0" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">other voices idle</text>
+<text x="620.0" y="608.0" font-size="11" fill="#52514e" text-anchor="start" font-weight="400">(N = 4 → each 0…63)</text>
+<text x="352.0" y="732.0" font-size="11" fill="#52514e" text-anchor="middle" font-weight="400">samples (1 sample = 32 µs; 32 samples ≈ 1.0 ms)</text>
+<line x1="92.0" y1="710.0" x2="92.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="157.0" y1="710.0" x2="157.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="222.0" y1="710.0" x2="222.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="287.0" y1="710.0" x2="287.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="352.0" y1="710.0" x2="352.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="417.0" y1="710.0" x2="417.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="482.0" y1="710.0" x2="482.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="547.0" y1="710.0" x2="547.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<line x1="612.0" y1="710.0" x2="612.0" y2="714.0" stroke="#b9b8b2" stroke-width="1"/>
+<path d="M92.0,764.0 L120.0,764.0" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="128.0" y="768.0" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="400">voice 1</text>
+<path d="M242.0,764.0 L270.0,764.0" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="278.0" y="768.0" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="400">voice 2</text>
+<path d="M392.0,764.0 L420.0,764.0" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="428.0" y="768.0" font-size="11.5" fill="#0b0b0b" text-anchor="start" font-weight="400">sum (PWM duty)</text>
+<text x="700.0" y="236.0" font-size="12" fill="#0b0b0b" text-anchor="start" font-weight="600">Why DDS:</text>
+<text x="700.0" y="254.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">• pitch = inc, not a timer:</text>
+<text x="700.0" y="272.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">  24-bit step → &lt; 0.05 cent</text>
+<text x="700.0" y="290.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">• every voice shares one</text>
+<text x="700.0" y="308.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">  timer and one table</text>
+<text x="700.0" y="326.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">• cost per voice: add +</text>
+<text x="700.0" y="344.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">  lookup ≈ 30 cycles</text>
+<text x="700.0" y="362.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">  (sine + env ≈ 36)</text>
+<text x="700.0" y="380.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="400">• no division in the ISR</text>
+</svg>
