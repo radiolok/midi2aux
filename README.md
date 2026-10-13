@@ -63,7 +63,8 @@ be shorter than the waveform ISR, so the minimum period is 200 cycles for square
 
 ![Poly mode block diagram](img/arch-poly.svg)
 
-Up to 4 simultaneous notes. Timer0 no longer depends on the note: it **ticks at a fixed
+`POLY_VOICES` simultaneous notes, set at compile time (1…16, default 4). Timer0 no
+longer depends on the note: it **ticks at a fixed
 31.25 kHz**, and each voice is a DDS phase accumulator.
 
 1. `USART_RX_vect` only puts the byte into a 16-byte ring buffer (≈ 5 ms of MIDI). The
@@ -79,9 +80,12 @@ Up to 4 simultaneous notes. Timer0 no longer depends on the note: it **ticks at 
    is jitter-free. Then for every active voice it does `acc += inc` and
    `sum += wavetable[acc >> 16]`.
 5. Each voice's amplitude is `TOP / N`, so the sum never clips. Timer2 runs 8-bit Fast PWM
-   at 62.5 kHz (TOP = 255), which gives 64 levels per voice.
+   at 62.5 kHz (TOP = 255), which gives 64 levels per voice for N = 4.
 
-Cost: ≈ 77 + 30·N cycles per sample out of 512 (197 cycles, 38 % CPU for 4 voices).
+Cost: ≈ 77 + 30·N cycles per sample out of 512 (N = 4: 197 cycles, 38 % CPU; N = 8: 317
+cycles, 62 %). The build fails if the sample ISR would exceed 90 % CPU. It warns above 70 %,
+and also when a voice gets fewer than 16 PWM levels. At 31.25 kHz that means up to 12 voices
+with a 24-bit accumulator. More voices cost resolution: per-voice levels = TOP / N + 1.
 Pitch is exact (< 0.05 cent). The trade-offs against mono: a single note plays at ¼ of
 full scale, high notes alias (fewer samples per period), and PWM ripple rises (62.5 kHz
 instead of 160 kHz carrier). Full analysis: [docs/polyphony.md](docs/polyphony.md).
@@ -95,7 +99,7 @@ cmake --build build --target upload_midi2aux       # avrdude, -DAVR_PORT=/dev/tt
 cmake --build build --target upload_midi2aux_poly
 ```
 
-Poly options: `-DPOLY_VOICES=1..8`, `-DPOLY_FS=31250`, `-DPOLY_PWM_TOP=255`,
+Poly options: `-DPOLY_VOICES=1..16`, `-DPOLY_FS=31250`, `-DPOLY_PWM_TOP=255`,
 `-DPOLY_ACC_BITS=24`. Prebuilt images are in [fw/bin/](fw/bin/). PlatformIO
 (`pio run`) still builds the mono variant.
 
@@ -125,7 +129,7 @@ Sample period clamped to ≥ 200 cycles (square, sine) or ≥ 350 cycles (triang
 
 ### Memory
 
-| Resource | Mono | Poly (4 voices) |
+| Resource | Mono | Poly (default, 4 voices) |
 |----------|------|-----------------|
 | Flash | 2656 bytes (8.1%) | 3130 bytes (9.6%) |
 | RAM | 74 bytes (3.6%) | 827 bytes (40.4%) |

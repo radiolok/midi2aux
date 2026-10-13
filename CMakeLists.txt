@@ -12,7 +12,7 @@ set(AVR_PORT   /dev/ttyUSB0 CACHE STRING "Serial port for avrdude upload")
 set(AVR_BAUD   57600        CACHE STRING "Bootloader baud rate (old Nano bootloader: 57600)")
 
 # Polyphonic build parameters (target midi2aux_poly)
-set(POLY_VOICES   4     CACHE STRING "Number of voices")
+set(POLY_VOICES   4     CACHE STRING "Number of voices, 1..16 (build checks CPU budget)")
 set(POLY_FS       31250 CACHE STRING "Sample rate, Hz")
 set(POLY_PWM_TOP  255   CACHE STRING "Timer2 TOP (255 = 62.5 kHz, 99 = 160 kHz)")
 set(POLY_ACC_BITS 24    CACHE STRING "Phase accumulator width (16 or 24)")

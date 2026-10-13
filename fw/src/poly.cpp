@@ -13,8 +13,27 @@ typedef __uint24 acc_t;
 typedef uint16_t acc_t;
 #endif
 
-#if POLY_VOICES < 1 || POLY_VOICES > 8
-#error "POLY_VOICES must be 1..8 (VOICE() is unrolled 8 times)"
+#if POLY_VOICES < 1 || POLY_VOICES > 16
+#error "POLY_VOICES must be 1..16 (VOICE() is unrolled 16 times)"
+#endif
+
+// Sample ISR cost measured from the listing (tools/isrcycles.py), worst case
+// with all voices active: ~77 + 30*N cycles (24-bit acc), ~65 + 22*N (16-bit).
+#if POLY_ACC_BITS == 24
+#define POLY_ISR_CYCLES (77 + 30 * POLY_VOICES)
+#else
+#define POLY_ISR_CYCLES (65 + 22 * POLY_VOICES)
+#endif
+#define POLY_SAMPLE_CYCLES (F_CPU / POLY_FS)
+
+#if POLY_ISR_CYCLES * 100 > POLY_SAMPLE_CYCLES * 90
+#error "POLY_VOICES too high for POLY_FS: sample ISR would take > 90% CPU"
+#elif POLY_ISR_CYCLES * 100 > POLY_SAMPLE_CYCLES * 70
+#warning "Sample ISR takes > 70% CPU: little time left for MIDI and the main loop"
+#endif
+
+#if POLY_PWM_TOP / POLY_VOICES < 16
+#warning "Fewer than 16 PWM levels per voice: expect audible quantization"
 #endif
 
 #define N   POLY_VOICES
@@ -123,8 +142,10 @@ ISR(TIMER0_COMPA_vect) {
 	OCR2B = outNext;	// output first: no jitter from voice count
 
 	uint8_t sum = 0;
-	VOICE(0) VOICE(1) VOICE(2) VOICE(3)
-	VOICE(4) VOICE(5) VOICE(6) VOICE(7)
+	VOICE(0)  VOICE(1)  VOICE(2)  VOICE(3)
+	VOICE(4)  VOICE(5)  VOICE(6)  VOICE(7)
+	VOICE(8)  VOICE(9)  VOICE(10) VOICE(11)
+	VOICE(12) VOICE(13) VOICE(14) VOICE(15)
 	outNext = sum;
 }
 
