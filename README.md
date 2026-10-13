@@ -188,7 +188,7 @@ fw/src/
 ├── waveform.h / waveform.cpp  # Mono: sine table, waveform ISR, 3 modes
 ├── poly.h / poly.cpp # Poly: DDS voices, wavetable, voice allocation
 └── envelope.h / envelope.cpp  # SINE_ENV: pot-controlled sine envelope
-fw/bin/               # Prebuilt .hex (mono, mono_env, poly4)
+fw/bin/               # Prebuilt .hex (mono, mono_env, poly4, poly4_env, poly1_env)
 docs/polyphony.md     # Polyphony analysis and cycle budget
 img/                  # Photo, block diagrams (SVG)
 tools/isrcycles.py    # ISR cycle count from avr-objdump listing
