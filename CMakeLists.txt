@@ -17,6 +17,8 @@ set(POLY_FS       31250 CACHE STRING "Sample rate, Hz")
 set(POLY_PWM_TOP  255   CACHE STRING "Timer2 TOP (255 = 62.5 kHz, 99 = 160 kHz)")
 set(POLY_ACC_BITS 24    CACHE STRING "Phase accumulator width (16 or 24)")
 option(POLY_SINE_ENV "Poly: pot drives the sine envelope (pluck -> organ -> pad)" ON)
+set(POLY_DRIVE    100   CACHE STRING "Poly + envelope: chord gain normalisation, % (100 = never clips, 150..200 = louder chords, may clip)")
+set(POT2_ADC      ""    CACHE STRING "Envelope builds: ADC channel of a second pot (attack), e.g. 6 for A6; empty = one pot")
 
 file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/fw/src/*.cpp)
 
@@ -43,10 +45,14 @@ endfunction()
 
 set(POLY_DEFS POLY_VOICES=${POLY_VOICES} POLY_FS=${POLY_FS}
 	POLY_PWM_TOP=${POLY_PWM_TOP} POLY_ACC_BITS=${POLY_ACC_BITS})
+set(ENV_DEFS SINE_ENV)
+if(NOT POT2_ADC STREQUAL "")
+	list(APPEND ENV_DEFS POT2_ADC=${POT2_ADC})
+endif()
 if(POLY_SINE_ENV)
-	list(APPEND POLY_DEFS SINE_ENV)
+	list(APPEND POLY_DEFS ${ENV_DEFS} POLY_DRIVE=${POLY_DRIVE})
 endif()
 
 avr_firmware(midi2aux)			# original mono, identical to master
-avr_firmware(midi2aux_env SINE_ENV)	# mono + sine envelope on the pot
+avr_firmware(midi2aux_env ${ENV_DEFS})	# mono + sine envelope on the pot
 avr_firmware(midi2aux_poly ${POLY_DEFS})

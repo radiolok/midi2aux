@@ -85,7 +85,7 @@ void noteOff(void) {
 void envPoll(void) {
 	uint8_t mode = waveMode;
 	if (mode == 2)
-		envSetPot(potValue);
+		envConfig(ENV_MORPH, potValue, pot2Value);
 	for (uint8_t n = envElapsed(); n; n--) {
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 			if (midiActive && mode == 2) {

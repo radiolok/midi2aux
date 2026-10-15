@@ -32,6 +32,11 @@ static void initGPIO(void) {
 	PORTC |= (1 << 1);
 }
 
+#if defined(POT2_ADC) && !defined(SINE_ENV)
+#error "POT2_ADC needs SINE_ENV: the second pot drives the envelope attack"
+#endif
+
+#ifndef POT2_ADC
 static void initADC(void) {
 	ADMUX  = (1 << REFS0) | (1 << ADLAR);
 	ADCSRA = (1 << ADEN) | (1 << ADATE) | (1 << ADIE)
@@ -42,6 +47,26 @@ static void initADC(void) {
 ISR(ADC_vect) {
 	potValue = ADCH;
 }
+#else
+// Two pots: single conversions, alternating ADC0 and ADC<POT2_ADC>. The mux
+// is switched between conversions, so each result belongs to its channel.
+static void initADC(void) {
+	ADMUX  = (1 << REFS0) | (1 << ADLAR);
+	ADCSRA = (1 << ADEN) | (1 << ADIE) | (1 << ADSC)
+	       | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+}
+
+ISR(ADC_vect) {
+	static uint8_t ch;
+	if (ch)
+		pot2Value = ADCH;
+	else
+		potValue = ADCH;
+	ch ^= 1;
+	ADMUX = (1 << REFS0) | (1 << ADLAR) | (ch ? POT2_ADC : 0);
+	ADCSRA |= (1 << ADSC);
+}
+#endif
 
 static void initTimer1Btn(void) {
 	TCCR1A = 0;

@@ -9,7 +9,9 @@ static uint16_t atkStep = 32767;
 static uint16_t decK;
 static uint16_t relK;
 static uint8_t sustain;
+static uint8_t lastShape = 0xFF;
 static int16_t lastPot = -100;
+static int16_t lastPot2 = -100;
 static uint8_t lastTick;
 
 // Per-millisecond multiplier (x/65536) that falls to -40 dB in `ms`.
@@ -17,16 +19,29 @@ static uint16_t fallK(float ms) {
 	return (uint16_t)(65536.0f * expf(-4.605f / ms));
 }
 
+static uint8_t near(int16_t a, int16_t b) {
+	int16_t d = a - b;
+	return d > -4 && d < 4;
+}
+
 // Called from the main loop; floats are fine here, they run only when the
-// pot moves by more than 4 steps.
-void envSetPot(uint8_t pot) {
-	int16_t d = (int16_t)pot - lastPot;
-	if (d > -4 && d < 4)
+// shape changes or a pot moves by more than 3 steps.
+void envConfig(uint8_t shape, uint8_t pot, uint8_t pot2) {
+#ifndef POT2_ADC
+	pot2 = 0;
+#endif
+	if (shape == lastShape && near(pot, lastPot) && near(pot2, lastPot2))
 		return;
+	lastShape = shape;
 	lastPot = pot;
+	lastPot2 = pot2;
 
 	float atk, dec, rel;
-	if (pot < 128) {
+	if (shape == ENV_GATE) {
+		atk = 2.0f;
+		dec = rel = 10.0f;
+		sustain = 1;
+	} else if (pot < 128) {
 		float x = (float)pot / 127.0f;
 		atk = 2.0f;
 		dec = 50.0f * powf(60.0f, x);		// 50 ms .. 3 s
@@ -38,6 +53,11 @@ void envSetPot(uint8_t pot) {
 		dec = rel = 50.0f * powf(40.0f, y);	// 50 ms .. 2 s
 		sustain = 1;
 	}
+#ifdef POT2_ADC
+	atk = powf(1000.0f, (float)pot2 / 255.0f);	// 1 ms .. 1 s
+	if (shape == ENV_GATE && rel < atk)
+		dec = rel = atk;
+#endif
 	atkStep = (uint16_t)(65535.0f / atk);
 	decK = fallK(dec);
 	relK = fallK(rel);

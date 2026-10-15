@@ -12,6 +12,7 @@ Firmware for Arduino Nano (ATmega328P) that converts MIDI Note-On/Off messages i
 | PD2 | Optocoupler enable (active HIGH) |
 | PD3 | Audio PWM output (OC2B → RC filter; 160 kHz mono, 62.5 kHz poly) |
 | PC0 | Potentiometer (ADC0, 0–5V) |
+| ADCn | Optional second potentiometer, envelope attack (`-DPOT2_ADC=n`, e.g. 6 for A6) |
 | PC1 | Button (internal pull-up, mode switch + note off on press) |
 | PD4 | LED — Square wave |
 | PD5 | LED — Triangle wave |
@@ -84,9 +85,12 @@ size alone, so all voices share one timer and one table.
    never divides.
 4. Each `TIMER0_COMPA` interrupt first writes the previous sum to `OCR2B`, so the output
    is jitter-free. Then for every active voice it does `acc += inc` and
-   `sum += wavetable[acc >> 16]`.
-5. Each voice's amplitude is `TOP / N`, so the sum never clips. Timer2 runs 8-bit Fast PWM
-   at 62.5 kHz (TOP = 255), which gives 64 levels per voice for N = 4.
+   `sum += wavetable[acc >> 16]`. Timer0 and Timer2 are started in a fixed phase: Timer2
+   latches `OCR2B` at BOTTOM right before the write, so every sample lasts exactly two
+   PWM periods even when another interrupt delays the sample ISR by up to ~200 cycles.
+5. Without `SINE_ENV` each voice's amplitude is `TOP / N`, so the sum never clips. With
+   `SINE_ENV` (default) the sum is normalised instead, see below. Timer2 runs 8-bit Fast
+   PWM at 62.5 kHz (TOP = 255).
 
 Cost: ≈ 77 + 30·N cycles per sample out of 512 (N = 4: 197 cycles, 38 % CPU; N = 8: 317
 cycles, 62 %). The build fails if the sample ISR would exceed 90 % CPU. It warns above 70 %,
@@ -130,12 +134,41 @@ How it works:
 - In sine mode the output idles at mid-scale instead of 0, so fades end without a DC step
   (click). The button and MIDI Stop still silence everything at once.
 
-Poly cost with `SINE_ENV`: the sine path is ≈ 86 + 36·N cycles (N = 4: 230 cycles, 45 % CPU).
-The other waveforms stay at ≈ 83 + 30·N. The budget check uses the sine path, so with
-`SINE_ENV` the limit is 10 voices at 31.25 kHz.
+### Poly with `SINE_ENV`: envelope for every waveform, normalised sum
 
-Resolution limits how deep a fade sounds clean. The mono sine spans ±49 PWM levels, so at
-−20 dB only ±5 levels remain and the tail turns grainy. Poly with N = 4 has ±31 per voice.
+In the poly envelope build every waveform is a signed full-scale table (±127) and every
+voice has an envelope. Sine uses the knob envelope above; square and triangle get a short
+gate envelope (2 ms attack, 10 ms release) only to avoid clicks, and keep the pot for
+duty / split.
+
+- **Normalisation.** Each voice is scaled by `envelope × master`. Once per millisecond
+  the main loop sums the envelope levels; if the sum exceeds full scale, `master` drops
+  at once so the output cannot clip, and it recovers at ~1 step/ms (≈ 0.25 s) as voices
+  fade. A single note plays at full scale, as loud as mono; a 4-note chord is turned down
+  to ¼ per voice. `-DPOLY_DRIVE=150..200` trades a louder chord for occasional clipping
+  (the sum is clamped).
+- **Voice stealing without clicks.** A free voice starts at phase 0 and level 0. A stolen
+  voice (released ones are stolen first) keeps its phase and envelope level: the pitch
+  changes on the fly and the new attack starts from the current level, like the mono
+  firmware. With `POLY_VOICES=1` this is mono legato on the DDS engine.
+- Voice search runs with interrupts enabled; only the multi-byte writes the sample ISR
+  reads are atomic.
+
+Cost: estimated ≈ 95 + 40·N cycles (N = 4: ≈ 255 cycles, 50 % CPU); re-check with
+`tools/isrcycles.py` after a build. The budget check limits this to 9 voices at 31.25 kHz.
+
+### Second pot (`POT2_ADC`)
+
+With `-DPOT2_ADC=n` the firmware alternates ADC0 and ADCn (A6/A7 on the Nano are
+analog-only and free). The second pot sets the attack, 1 ms … 1 s, for the sine envelope
+(mono and poly) and for the gate envelope of square/triangle (poly; the release follows the
+attack, at least 10 ms). The first pot keeps its role: duty / split / envelope character.
+
+### Host simulation
+
+`tools/sim/build.sh` builds the poly engine for x86 with mocked registers (no avr-gcc
+needed) and `tools/sim/out/sim_poly{1,4} <legato|staccato|chord> out.wav [pot] [mode]`
+renders the PWM duty sequence as a 31.25 kHz WAV. It checks the DSP logic, not timing.
 
 ## Building & Upload
 
@@ -152,7 +185,8 @@ cmake --build build --target upload_midi2aux_env   # avrdude, -DAVR_PORT=/dev/tt
 | `midi2aux_poly` | Poly; sine envelope on by default (`-DPOLY_SINE_ENV=OFF` to disable) |
 
 Poly options: `-DPOLY_VOICES=1..16`, `-DPOLY_FS=31250`, `-DPOLY_PWM_TOP=255`,
-`-DPOLY_ACC_BITS=24`, `-DPOLY_SINE_ENV=ON`. Prebuilt images are in [fw/bin/](fw/bin/). PlatformIO
+`-DPOLY_ACC_BITS=24`, `-DPOLY_SINE_ENV=ON`, `-DPOLY_DRIVE=100`. Envelope builds (mono and
+poly): `-DPOT2_ADC=6` for a second pot on A6. Prebuilt images are in [fw/bin/](fw/bin/). PlatformIO
 (`pio run`) still builds the mono variant.
 
 Remove MIDI jumper before upload — optocoupler gate (PD2) isolates RX.

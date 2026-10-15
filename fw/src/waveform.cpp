@@ -3,6 +3,9 @@
 #include <math.h>
 
 volatile uint8_t potValue = 0;
+#ifdef SINE_ENV
+volatile uint8_t pot2Value = 0;
+#endif
 volatile uint8_t waveMode = 0;
 
 #ifndef POLY_VOICES
